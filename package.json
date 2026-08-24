@@ -1,0 +1,20 @@
+{
+  "name": "blockchain-capstone",
+  "version": "1.0.0",
+  "description": "Decentralized platform for esports tournament rewards and digital token distribution enabling transparent prize distribution to players using blockchain technology.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "hardhat": "^3.14.0"
+  }
+}
