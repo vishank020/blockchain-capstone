@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+p-lock/
+
+# Environment variables
+.env
+
+# Build artifacts
+/.next/
+/dist/
+/build/
+
+# Hardhat
+artifacts/
+cache/
+overrides/
+
+# IPFS
+.ipfs/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
