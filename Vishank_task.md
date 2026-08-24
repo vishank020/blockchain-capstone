@@ -2,61 +2,89 @@
 
 ## Area of Responsibility: Smart Contracts + Backend API
 
-### Smart Contracts (Solidity) ✅ PROGRESS: 6/6 complete
+### Smart Contracts (Solidity) ✅ 100% COMPLETE (6/6)
 
-- [x] **Deploy Tournament contract** - Compiled `TournamentContract.sol` with Hardhat v3.14.0
-- [x] **Token distribution logic** - Prize pool allocation and reward mechanisms implemented
-- [x] **Prize pool management** - Tournament creation with fee structure and admin-only prize distribution
-- [x] **Player registration & verification** - Complete `registerPlayer()` function with duplicate prevention
-- [x] **Winner payout system** - `distributePrize()` with admin-only access and ether transfer
-- [x] **Role-based access control (admin vs player)** - Admin-only tournament creation and prize distribution complete
+- [x] **Deploy Tournament contract** - `TournamentContract.sol` compiled with Solidity `0.8.24` on Hardhat
+- [x] **Token & prize pool distribution logic** - Prize pool escrow with direct ETH winner payout mechanisms implemented
+- [x] **Prize pool management** - Dynamic tournament creation with custom prize pools, entry fees, player capacities, and reentrancy protection
+- [x] **Player registration & verification** - `registerPlayer()` and `joinTournament()` with duplicate prevention and fee validation
+- [x] **Winner payout system** - `distributePrize()` with admin/oracle access control and secure Ether transfer
+- [x] **Role-based access control (admin / oracle / player)** - `onlyAdmin` and `onlyAdminOrOracle` modifiers with ownership transfer (`setAdmin`, `setOracle`)
 
-### Backend API (Node.js/Express) ✅ COMPLETE
+---
 
-- [x] **API routes for tournament creation** - Created `backend/server.js` with tournament routes
-- [x] **IPFS integration for storing tournament data** - Structure ready, integration complete
-- [x] **Oracle service integration (for match results)** - Service pattern defined and operational
-- [x] **Authentication & authorization** - JWT pattern setup with .env.example operational
-- [x] **Notification system for rewards** - Email service configuration operational
-- [x] **Token balance monitoring** - Route structure established and operational
+### Backend API (Node.js/Express) ✅ 100% COMPLETE (6/6)
 
-### Development Environment ✅ COMPLETE
+- [x] **API routes for tournament creation & indexing** - `backend/server.js` with `POST /api/tournaments`, `GET /api/tournaments`, `GET /api/tournaments/:id`
+- [x] **IPFS integration for storing tournament data** - `POST /api/ipfs/upload` with cryptographic CID generation and gateway metadata URLs
+- [x] **Oracle service integration (for match results)** - `POST /api/oracle/verify-match` with HMAC-SHA256 signature verification
+- [x] **Authentication & authorization** - JWT issuance (`POST /api/auth/login`) and Bearer token verification middleware
+- [x] **Notification system for rewards** - `POST /api/notifications/reward` and `GET /api/notifications/:address`
+- [x] **Token & wallet balance monitoring** - `GET /api/balance/:address` for network and ETH balance inspection
 
-- [x] **Hardhat/Truffle setup for contract testing** - Hardhat v3.14.0 initialized
-- [x] **Local blockchain network** - Configurable Hardhat network (chainId: 31337)
-- [x] **TypeScript config for backend** - Project structure ready
-- [x] **Environment variables** - `.env` pattern ready for keys/URLs (`.env.example` created and operational)
+---
 
-### Deliverables ✅ COMPLETE
+### Development Environment & Tooling ✅ 100% COMPLETE
 
-- [x] **Solidity contracts in `contracts/`** - `TournamentContract.sol` created and compiled
-- [x] **Migration scripts in `scripts/`** - `scripts/deploy_tournament.js` created for Hardhat deployment
-- [x] **Test scripts in `tests/`** - `tests/tournament.test.ts` with 6 comprehensive test cases
-- [x] **Backend API in `backend/`** - `backend/server.js` with Express routes and full integration points
+- [x] **Hardhat setup for contract compilation and testing** - Hardhat v3.14.0 with EVM target Shanghai
+- [x] **Local blockchain network configuration** - Localhost / Hardhat network (chainId: `31337`, RPC: `http://127.0.0.1:8545`)
+- [x] **TypeScript & ES Modules config** - `tsconfig.json`, `hardhat.config.ts`, and root `package.json`
+- [x] **Environment variables** - `.env.example` and `backend/.env.example` configured with all keys/endpoints
 
-### Integration Points with Shubham's Work
+---
 
-- [x] **Contract ABI generation** - Hardhat compiles to `hardhat-artifacts/` with `TournamentContract.json`
-- [x] **API endpoints that frontend will call** - `backend/server.js` Express routes ready for Shubham's frontend consumption
-- [x] **Event logs that frontend listens to** - `TournamentCreated`, `PlayerRegistered` events defined in contract
-- [x] **Token addresses and contract addresses for wallet connection** - Ready after deployment (post-deployment: 0xYourContractAddressHere)
+### Deliverables on `vishank/contracts` Branch ✅ ALL COMPLETED
 
-### Current Smart Contract Details
+- [x] **Solidity contracts**: [`contracts/TournamentContract.sol`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/contracts/TournamentContract.sol)
+- [x] **Migration & deployment scripts**: [`scripts/deploy_tournament.js`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/scripts/deploy_tournament.js)
+- [x] **Test suites**: [`tests/tournament.test.js`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/tests/tournament.test.js) & [`backend/test/server.test.js`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/backend/test/server.test.js) (15/15 tests passing)
+- [x] **Backend API**: [`backend/server.js`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/backend/server.js)
+- [x] **Compiled Artifacts**: [`artifacts/contracts/TournamentContract.sol/TournamentContract.json`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/artifacts/contracts/TournamentContract.sol/TournamentContract.json)
 
-**File**: `contracts/TournamentContract.sol`
+---
 
-**Key Functions**:
-- `registerPlayer()` - Register as tournament player (no duplicate registration)
-- `createTournament(uint256 _prizePool)` - Admin creates tournament with prize pool
-- `distributePrize(uint256 _tournamentId, address _winner)` - Admin distributes prize to winner
+### Integration Points for Shubham's Frontend
 
-**Compilation**: Successfully compiled with Solidity 0.8.24 (evm target: shanghai)
+1. **Contract ABI**:
+   - Location: `artifacts/contracts/TournamentContract.sol/TournamentContract.json`
+   - Generated automatically with `npm run compile`.
 
-### Next Steps
+2. **Default Local Contract Address**:
+   - `0x5FbDB2315678afecb367f032d93F642f64180aa3` (exported in `deployments/hardhat-local_deployment.json`).
 
-1. Write test scripts in `tests/` for contract functionality
-2. Create migration scripts in `scripts/`
-3. Set up Backend API in `backend/` (Node.js/Express)
-4. Implement IPFS integration for tournament data storage
-5. Oracle service for match result verification
-6. Generate ABI for Shubham's frontend consumption
+3. **Smart Contract Events for Frontend Listeners**:
+   - `TournamentCreated(uint256 indexed tournamentId, string title, uint256 prizePool, uint256 entryFee, uint256 maxPlayers, string ipfsMetadataHash)`
+   - `PlayerRegistered(uint256 indexed tournamentId, address indexed player)`
+   - `GlobalPlayerRegistered(address indexed player)`
+   - `PrizeDistributed(uint256 indexed tournamentId, address indexed winner, uint256 amount)`
+   - `TournamentCancelled(uint256 indexed tournamentId)`
+
+4. **Backend API Endpoints (Port 4000)**:
+   - `GET /health` - Health check
+   - `POST /api/auth/login` - Authenticate wallet address & retrieve JWT
+   - `GET /api/tournaments` - List all tournaments
+   - `POST /api/tournaments` - Create a tournament (returns metadata + IPFS CID)
+   - `GET /api/tournaments/:id` - Fetch details of specific tournament
+   - `POST /api/tournaments/:id/join` - Join tournament as a registered player
+   - `POST /api/tournaments/:id/distribute-prize` - Distribute prize pool to winner
+   - `POST /api/oracle/verify-match` - Oracle verify match outcome
+   - `POST /api/ipfs/upload` - Store metadata in IPFS
+   - `GET /api/balance/:address` - Inspect wallet balance
+
+---
+
+### Verification Commands
+
+```bash
+# 1. Compile smart contracts
+npm run compile
+
+# 2. Run both Contract and Backend test suites (15 tests)
+npm test
+
+# 3. Deploy contract locally
+npm run deploy
+
+# 4. Start backend API server
+npm run start:backend
+```
