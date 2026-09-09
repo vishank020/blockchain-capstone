@@ -70,7 +70,75 @@ export default function App() {
     fetchTournaments();
   }, [fetchHealth, fetchTournaments]);
 
+  const fetchBalance = useCallback(async (walletAddress) => {
+    if (!walletAddress) return;
+    setBalanceLoading(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/balance/${walletAddress}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setBackendBalance(await res.json());
+    } catch (error) {
+      setBackendBalance({ error: getErrorMessage(error) });
+    } finally {
+      setBalanceLoading(false);
+    }
+  }, []);
+
+  const fetchNotifications = useCallback(async (walletAddress) => {
+    if (!walletAddress) {
+      setNotifications([]);
+      return;
+    }
+    try {
+      const res = await fetch(
+        `${BACKEND_URL}/api/notifications/${walletAddress}`
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setNotifications(data.notifications || []);
+    } catch {
+      setNotifications([]);
+    }
+  }, []);
+
+  const fetchChainBalance = useCallback(async () => {
+    if (!window.ethereum || !address) return;
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const wei = await provider.getBalance(address);
+      setChainBalance(ethers.formatEther(wei));
+    } catch {
+      setChainBalance(null);
+    }
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const token = new ethers.Contract(
+        REWARD_TOKEN_ADDRESS,
+        REWARD_TOKEN_ABI,
+        provider
+      );
+      const raw = await token.balanceOf(address);
+      setTrtBalance(ethers.formatEther(raw));
+    } catch {
+      setTrtBalance(null);
+    }
+  }, [address]);
+
+  useEffect(() => {
+    if (address) {
+      fetchBalance(address);
+      fetchNotifications(address);
+      fetchChainBalance();
+    } else {
+      setBackendBalance(null);
+      setChainBalance(null);
+      setTrtBalance(null);
+      setNotifications([]);
+    }
+  }, [address, fetchBalance, fetchNotifications, fetchChainBalance]);
+
   // Live contract-event subscription: auto-refreshes on-chain activity.
+  // Declared after all fetch callbacks to avoid TDZ access in the deps array.
   useEffect(() => {
     if (!window.ethereum) {
       setLiveConnected(false);
@@ -140,73 +208,6 @@ export default function App() {
       setLiveConnected(false);
     };
   }, [fetchTournaments, fetchNotifications, fetchChainBalance, address]);
-
-  const fetchBalance = useCallback(async (walletAddress) => {
-    if (!walletAddress) return;
-    setBalanceLoading(true);
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/balance/${walletAddress}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setBackendBalance(await res.json());
-    } catch (error) {
-      setBackendBalance({ error: getErrorMessage(error) });
-    } finally {
-      setBalanceLoading(false);
-    }
-  }, []);
-
-  const fetchNotifications = useCallback(async (walletAddress) => {
-    if (!walletAddress) {
-      setNotifications([]);
-      return;
-    }
-    try {
-      const res = await fetch(
-        `${BACKEND_URL}/api/notifications/${walletAddress}`
-      );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setNotifications(data.notifications || []);
-    } catch {
-      setNotifications([]);
-    }
-  }, []);
-
-  const fetchChainBalance = useCallback(async () => {
-    if (!window.ethereum || !address) return;
-    try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const wei = await provider.getBalance(address);
-      setChainBalance(ethers.formatEther(wei));
-    } catch {
-      setChainBalance(null);
-    }
-    try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const token = new ethers.Contract(
-        REWARD_TOKEN_ADDRESS,
-        REWARD_TOKEN_ABI,
-        provider
-      );
-      const raw = await token.balanceOf(address);
-      setTrtBalance(ethers.formatEther(raw));
-    } catch {
-      setTrtBalance(null);
-    }
-  }, [address]);
-
-  useEffect(() => {
-    if (address) {
-      fetchBalance(address);
-      fetchNotifications(address);
-      fetchChainBalance();
-    } else {
-      setBackendBalance(null);
-      setChainBalance(null);
-      setTrtBalance(null);
-      setNotifications([]);
-    }
-  }, [address, fetchBalance, fetchNotifications, fetchChainBalance]);
 
   const connectWallet = async () => {
     if (!window.ethereum) {
