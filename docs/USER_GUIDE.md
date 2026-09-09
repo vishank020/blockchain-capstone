@@ -31,3 +31,4 @@
 | Claim fails "must be a registered participant" | Claims only work from a participant address |
 | Claim shows "Claimed" | Prize was already distributed — check Notifications |
 | Wrong network in MetaMask | Switch to Chain ID 31337 for local dev |
+| Browsing to `http://127.0.0.1:8545` shows a parse error | Normal — the chain is a JSON-RPC API, not a website. Point MetaMask at it; never open it in a browser |
