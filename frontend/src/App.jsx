@@ -1,140 +1,238 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ethers } from "ethers";
-import TournamentAbi from "../hardhat-artifacts/contracts/TournamentContract.sol/TournamentContract.json";
+import { BACKEND_URL, CONTRACT_ABI, CONTRACT_ADDRESS } from "./config.js";
+import "./App.css";
 
-// Set up contract address (will be updated after deployment)
-const CONTRACT_ADDRESS = "0xYourContractAddressHere";
+const STATUS_LABELS = ["Open", "InProgress", "Completed", "Cancelled"];
+
+function formatStatus(status) {
+  const index = Number(status);
+  return STATUS_LABELS[index] || `Unknown (${String(status)})`;
+}
+
+function getErrorMessage(error) {
+  if (!error) return "Unknown error";
+  if (typeof error === "string") return error;
+  // ethers v6 contract revert: error.reason, error.shortMessage, or nested info
+  return (
+    error.reason ||
+    error.shortMessage ||
+    error?.info?.error?.message ||
+    error.message ||
+    "Transaction failed"
+  );
+}
 
 export default function App() {
-  const [provider, setProvider] = useState<ethers.providers.Web3Provider | null>(null);
-  const [signer, setSigner] = useState<ethers.Signer | null>(null);
-  const [address, setAddress] = useState<string | null>(null);
-  const [status, setStatus] = useState<string>("Connect wallet to begin");
-  const [tournamentCount, setTournamentCount] = useState<number>(0);
+  const [address, setAddress] = useState(null);
+  const [status, setStatus] = useState("Connect wallet to begin");
+  const [backendHealth, setBackendHealth] = useState(null);
+  const [tournaments, setTournaments] = useState([]);
+  const [tournamentsLoading, setTournamentsLoading] = useState(false);
+  const [joiningId, setJoiningId] = useState(null);
+  const [onChainCount, setOnChainCount] = useState(null);
 
-  useEffect(() => {
-    if (window.ethereum) {
-      const ethersProvider = new ethers.providers.Web3Provider(window.ethereum, "any");
-      setProvider(ethersProvider);
-
-      ethersProvider.send("eth_requestAccounts", []).then((accounts) => {
-        const acc = accounts[0];
-        setAddress(acc);
-        setSigner(ethersProvider.getSigner());
-        
-        // Connect to contract
-        const contract = new ethers.Contract(CONTRACT_ADDRESS, TournamentAbi.abi, ethersProvider.getSigner());
-        
-        // Read tournament count
-        contract.tournamentCount().then((count: number) => {
-          setTournamentCount(count);
-        });
-      });
+  const fetchHealth = useCallback(async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/health`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setBackendHealth(data);
+    } catch (error) {
+      setBackendHealth({ status: "unreachable", error: getErrorMessage(error) });
     }
   }, []);
+
+  const fetchTournaments = useCallback(async () => {
+    setTournamentsLoading(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/tournaments`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setTournaments(data.tournaments || []);
+    } catch (error) {
+      setStatus(`Failed to load tournaments: ${getErrorMessage(error)}`);
+    } finally {
+      setTournamentsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchHealth();
+    fetchTournaments();
+  }, [fetchHealth, fetchTournaments]);
 
   const connectWallet = async () => {
     if (!window.ethereum) {
       setStatus("MetaMask not detected. Please install MetaMask.");
       return;
     }
-    
     try {
-      await window.ethereum.request({ method: "eth_requestAccounts" });
-      // Reload the component to get the new state
-      window.location.reload();
+      // ethers v6: BrowserProvider replaces Web3Provider
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const accounts = await provider.send("eth_requestAccounts", []);
+      setAddress(accounts[0] || null);
+      setStatus(
+        accounts.length > 0
+          ? `Wallet connected: ${accounts[0]}`
+          : "No accounts returned by wallet"
+      );
     } catch (error) {
-      setStatus("Wallet connection failed");
-      console.error(error);
+      setStatus(`Wallet connection failed: ${getErrorMessage(error)}`);
     }
   };
 
-  const registerPlayer = async () => {
-    if (!signer) {
-      setStatus("Please connect wallet first");
+  const readOnChainCount = async () => {
+    if (!window.ethereum) {
+      setStatus("MetaMask not detected. Please install MetaMask.");
       return;
     }
-    
     try {
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, TournamentAbi.abi, signer);
-      await contract.registerPlayer();
-      setStatus("Player registered successfully!");
-      window.location.reload();
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        CONTRACT_ABI,
+        provider
+      );
+      const count = await contract.totalTournaments();
+      setOnChainCount(count.toString());
+      setStatus(`On-chain tournament count: ${count.toString()}`);
     } catch (error) {
-      setStatus("Registration failed: " + error);
-      console.error(error);
+      setStatus(`On-chain read failed: ${getErrorMessage(error)}`);
     }
   };
 
-  const createTournament = async () => {
-    if (!signer) {
+  const joinTournament = async (tournament) => {
+    if (!address) {
       setStatus("Please connect wallet first");
       return;
     }
-    
+    setJoiningId(tournament.id);
     try {
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, TournamentAbi.abi, signer);
-      await contract.createTournament(ethers.parseEther("100"));
-      setStatus("Tournament created successfully!");
-      window.location.reload();
+      const res = await fetch(
+        `${BACKEND_URL}/api/tournaments/${tournament.id}/join`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ playerAddress: address }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+      setStatus(`Joined tournament #${tournament.id} successfully`);
+      await fetchTournaments();
     } catch (error) {
-      setStatus("Tournament creation failed: " + error);
-      console.error(error);
-    }
-  };
-
-  const distributePrize = async () => {
-    if (!signer) {
-      setStatus("Please connect wallet first");
-      return;
-    }
-    
-    try {
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, TournamentAbi.abi, signer);
-      // Assuming tournamentId 1 and some winner address
-      await contract.distributePrize(1, address || "0x0000000000000000000000000000000000000000");
-      setStatus("Prize distributed successfully!");
-      window.location.reload();
-    } catch (error) {
-      setStatus("Prize distribution failed: " + error);
-      console.error(error);
+      // Backend returns contract-style revert reasons (already joined, full, not open)
+      setStatus(`Join failed: ${getErrorMessage(error)}`);
+    } finally {
+      setJoiningId(null);
     }
   };
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-      <h1>🎮 Esports Tournament Reward System</h1>
-      
-      <div style={{ marginBottom: '20px' }}>
-        {address ? (
-          <p>Connected wallet: {address}</p> : (
-          <button onClick={connectWallet} style={{ padding: '10px 20px', fontSize: '16px' }}>
-            Connect Wallet
-          </button>
+    <div className="page">
+      <header className="header">
+        <div>
+          <h1>Tournament DApp</h1>
+          <p className="subtitle">
+            MVP: wallet + tournament list + join + backend health
+          </p>
+        </div>
+        <div className="wallet-box">
+          {address ? (
+            <span className="pill pill-connected" title={address}>
+              {address.slice(0, 6)}...{address.slice(-4)}
+            </span>
+          ) : (
+            <button className="btn btn-primary" onClick={connectWallet}>
+              Connect Wallet
+            </button>
+          )}
+        </div>
+      </header>
+
+      <section className="card">
+        <h2>Backend</h2>
+        {backendHealth ? (
+          <p>
+            Status:{" "}
+            <strong
+              className={
+                backendHealth.status === "healthy" ? "ok" : "bad"
+              }
+            >
+              {backendHealth.status}
+            </strong>{" "}
+            <span className="muted">({BACKEND_URL})</span>
+            {backendHealth.error ? (
+              <span className="muted"> — {backendHealth.error}</span>
+            ) : null}
+          </p>
+        ) : (
+          <p className="muted">Checking backend...</p>
         )}
-      </div>
+        <div className="row">
+          <button className="btn" onClick={fetchHealth}>
+            Recheck health
+          </button>
+          <button className="btn" onClick={readOnChainCount}>
+            Read on-chain count
+          </button>
+          {onChainCount !== null ? (
+            <span className="muted">On-chain total: {onChainCount}</span>
+          ) : null}
+        </div>
+        <p className="muted small">
+          Contract: <code>{CONTRACT_ADDRESS}</code>
+        </p>
+      </section>
 
-      <div style={{ margin: '20px 0' }}>
-        <h3>Tournament Stats</h3>
-        <p>Total Tournaments: {tournamentCount}</p>
-      </div>
+      <section className="card">
+        <div className="row row-spread">
+          <h2>Tournaments</h2>
+          <button
+            className="btn"
+            onClick={fetchTournaments}
+            disabled={tournamentsLoading}
+          >
+            {tournamentsLoading ? "Loading..." : "Refresh"}
+          </button>
+        </div>
+        {tournaments.length === 0 && !tournamentsLoading ? (
+          <p className="muted">No tournaments found. Start the backend.</p>
+        ) : null}
+        <ul className="tournament-list">
+          {tournaments.map((tournament) => (
+            <li key={tournament.id} className="tournament-item">
+              <div>
+                <strong>
+                  #{tournament.id} {tournament.title}
+                </strong>
+                <div className="muted small">
+                  {formatStatus(tournament.status)} ·{" "}
+                  {tournament.currentPlayers}/{tournament.maxPlayers} players
+                  · Prize {tournament.prizePool} · Fee {tournament.entryFee}
+                </div>
+              </div>
+              <button
+                className="btn btn-primary"
+                disabled={joiningId === tournament.id || !address}
+                title={!address ? "Connect wallet first" : "Join via backend API"}
+                onClick={() => joinTournament(tournament)}
+              >
+                {joiningId === tournament.id ? "Joining..." : "Join"}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
 
-      <div>
-        <h3>Actions</h3>
-        <button onClick={registerPlayer} style={{ marginRight: '10px', padding: '8px 16px', fontSize: '14px' }}>
-          Register as Player
-        </button>
-        <button onClick={createTournament} style={{ padding: '8px 16px', fontSize: '14px' }}>
-          Create Tournament (100 ETH)
-        </button>
-        <button onClick={distributePrize} style={{ padding: '8px 16px', fontSize: '14px', marginLeft: '10px' }}>
-          Distribute Prize
-        </button>
-      </div>
-
-      <div style={{ marginTop: '20px', padding: '10px', background: '#f5f5f5', borderRadius: '8px' }}>
+      <section className="card status-card">
+        <h2>Status</h2>
         <p>{status}</p>
-      </div>
+      </section>
     </div>
   );
 }
