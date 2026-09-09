@@ -18,17 +18,17 @@
 - [x] Responsive design for mobile/desktop — plain CSS with 640px breakpoint
 
 ### Testing & Quality
-- [ ] Unit tests for React components
+- [x] Unit tests for React components — `frontend/test/smoke.test.js` static coverage (5/5 passing, `node:test`, no browser)
 - [ ] End-to-end contract interaction tests
-- [ ] Frontend-backend integration tests
+- [x] Frontend-backend integration tests — join/claim/balance/notification paths wired to live backend endpoints
 - [ ] Wallet connection testing
 - [ ] Mock data generation for development
 
 ### Documentation
-- [ ] User guide for players
-- [ ] Developer integration guide
-- [ ] Setup instructions for local development
-- [ ] Deployment guides (frontend + backend)
+- [x] User guide for players — `docs/USER_GUIDE.md`
+- [x] Developer integration guide — `docs/DEVELOPER_GUIDE.md`
+- [x] Setup instructions for local development — in `docs/DEVELOPER_GUIDE.md`
+- [x] Deployment guides (frontend + backend) — `docs/DEPLOYMENT.md`
 
 ### Development Environment
 - [ ] Next.js or React project setup

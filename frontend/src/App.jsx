@@ -183,7 +183,7 @@ export default function App() {
       return;
     }
     try {
-      // ethers v6: BrowserProvider replaces Web3Provider
+      // ethers v6: BrowserProvider replaces the legacy v5 provider class
       const provider = new ethers.BrowserProvider(window.ethereum);
       const accounts = await provider.send("eth_requestAccounts", []);
       setAddress(accounts[0] || null);
