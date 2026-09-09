@@ -10,6 +10,35 @@ function formatStatus(status) {
   return STATUS_LABELS[index] || `Unknown (${String(status)})`;
 }
 
+const STATUS_CLASSES = {
+  Open: "st-open",
+  InProgress: "st-progress",
+  Completed: "st-done",
+  Cancelled: "st-cancelled",
+};
+
+function statusBadge(status) {
+  const key = STATUS_LABELS[Number(status)] || "";
+  return (
+    <span className={`badge ${STATUS_CLASSES[key] || ""}`}>
+      {formatStatus(status)}
+    </span>
+  );
+}
+
+const EVENT_DOT_CLASSES = {
+  TournamentCreated: "ev-created",
+  TokenTournamentCreated: "ev-created",
+  PlayerRegistered: "ev-joined",
+  PrizeDistributed: "ev-prize",
+  TokenPrizeDistributed: "ev-prize",
+  TournamentCancelled: "ev-cancelled",
+};
+
+function eventDot(type) {
+  return <span className={`event-dot ${EVENT_DOT_CLASSES[type] || ""}`} />;
+}
+
 function getErrorMessage(error) {
   if (!error) return "Unknown error";
   if (typeof error === "string") return error;
@@ -319,11 +348,16 @@ export default function App() {
   return (
     <div className="page">
       <header className="header">
-        <div>
-          <h1>Tournament DApp</h1>
-          <p className="subtitle">
-            MVP: wallet + tournament list + join + backend health
-          </p>
+        <div className="brand">
+          <span className="monogram" aria-hidden="true">
+            TR
+          </span>
+          <div>
+            <h1>TourneyReward</h1>
+            <p className="subtitle">
+              Decentralized esports prize distribution
+            </p>
+          </div>
         </div>
         <div className="wallet-box">
           {address ? (
@@ -395,19 +429,25 @@ export default function App() {
         ) : backendBalance?.error ? (
           <p className="bad">Balance error: {backendBalance.error}</p>
         ) : (
-          <p>
-            Backend:{" "}
-            <strong>{backendBalance?.formattedBalance || "..."}</strong>{" "}
-            <span className="muted small">
-              ({backendBalance?.network || "Hardhat Local"})
-            </span>
-            {chainBalance !== null ? (
-              <span className="muted small"> · Chain: {chainBalance} ETH</span>
-            ) : null}
-            {trtBalance !== null ? (
-              <span className="muted small"> · TRT: {trtBalance}</span>
-            ) : null}
-          </p>
+          <div className="stats">
+            <div className="stat">
+              <span className="stat-label">Backend</span>
+              <strong>{backendBalance?.formattedBalance || "..."}</strong>
+              <span className="muted small">
+                {backendBalance?.network || "Hardhat Local"}
+              </span>
+            </div>
+            <div className="stat">
+              <span className="stat-label">Chain ETH</span>
+              <strong>{chainBalance !== null ? chainBalance : "..."}</strong>
+              <span className="muted small">live on-chain balance</span>
+            </div>
+            <div className="stat">
+              <span className="stat-label">TRT</span>
+              <strong>{trtBalance !== null ? trtBalance : "..."}</strong>
+              <span className="muted small">reward-token balance</span>
+            </div>
+          </div>
         )}
       </section>
 
@@ -433,14 +473,16 @@ export default function App() {
               <ul className="tournament-list">
                 {myTournaments.map((tournament) => (
                   <li key={tournament.id} className="tournament-item">
-                    <div>
-                      <strong>
-                        #{tournament.id} {tournament.title}
-                      </strong>
-                      <div className="muted small">
-                        {formatStatus(tournament.status)} · Prize{" "}
-                        {tournament.prizePool}
-                        {tournament.prizeDistributed ? " · Distributed" : ""}
+                    <div className="tournament-main">
+                      <div className="tournament-title">
+                        #{tournament.id} {tournament.title}{" "}
+                        {statusBadge(tournament.status)}
+                      </div>
+                      <div className="prize-line">
+                        Prize <strong>{tournament.prizePool}</strong>
+                        {tournament.prizeDistributed ? (
+                          <span className="muted small"> · Distributed</span>
+                        ) : null}
                         {tournament.winner ? ` · Winner ${tournament.winner.slice(0, 6)}...` : ""}
                       </div>
                     </div>
@@ -515,10 +557,13 @@ export default function App() {
         ) : (
           <ul className="tournament-list">
             {liveEvents.map((event, index) => (
-              <li key={`${event.time}-${index}`} className="tournament-item">
-                <div>
-                  <strong>{event.type}</strong>
-                  <div className="muted small">{event.message}</div>
+              <li key={`${event.time}-${index}`} className="tournament-item event-item">
+                <div className="tournament-main event-main">
+                  {eventDot(event.type)}
+                  <div>
+                    <strong>{event.type}</strong>
+                    <div className="muted small">{event.message}</div>
+                  </div>
                 </div>
                 <span className="muted small">{event.time}</span>
               </li>
@@ -542,28 +587,48 @@ export default function App() {
           <p className="muted">No tournaments found. Start the backend.</p>
         ) : null}
         <ul className="tournament-list">
-          {tournaments.map((tournament) => (
-            <li key={tournament.id} className="tournament-item">
-              <div>
-                <strong>
-                  #{tournament.id} {tournament.title}
-                </strong>
-                <div className="muted small">
-                  {formatStatus(tournament.status)} ·{" "}
-                  {tournament.currentPlayers}/{tournament.maxPlayers} players
-                  · Prize {tournament.prizePool} · Fee {tournament.entryFee}
+          {tournaments.map((tournament) => {
+            const pct =
+              tournament.maxPlayers > 0
+                ? Math.min(
+                    100,
+                    Math.round(
+                      (tournament.currentPlayers / tournament.maxPlayers) * 100
+                    )
+                  )
+                : 0;
+            return (
+              <li key={tournament.id} className="tournament-item">
+                <div className="tournament-main">
+                  <div className="tournament-title">
+                    #{tournament.id} {tournament.title}{" "}
+                    {statusBadge(tournament.status)}
+                  </div>
+                  <div className="prize-line">
+                    Prize <strong>{tournament.prizePool}</strong>
+                    <span className="muted"> · Fee {tournament.entryFee}</span>
+                  </div>
+                  <div className="progress" aria-hidden="true">
+                    <div
+                      className="progress-fill"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <div className="muted small">
+                    {tournament.currentPlayers}/{tournament.maxPlayers} players
+                  </div>
                 </div>
-              </div>
-              <button
-                className="btn btn-primary"
-                disabled={joiningId === tournament.id || !address}
-                title={!address ? "Connect wallet first" : "Join via backend API"}
-                onClick={() => joinTournament(tournament)}
-              >
-                {joiningId === tournament.id ? "Joining..." : "Join"}
-              </button>
-            </li>
-          ))}
+                <button
+                  className="btn btn-primary"
+                  disabled={joiningId === tournament.id || !address}
+                  title={!address ? "Connect wallet first" : "Join via backend API"}
+                  onClick={() => joinTournament(tournament)}
+                >
+                  {joiningId === tournament.id ? "Joining..." : "Join"}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </section>
 

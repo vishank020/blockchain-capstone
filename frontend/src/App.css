@@ -1,53 +1,125 @@
+/* TourneyReward — dark esports arena theme (plain CSS, no framework) */
+
 .page {
-  max-width: 800px;
+  --bg: #0b0e17;
+  --bg-glow: radial-gradient(900px 320px at 15% -5%, rgba(139, 92, 246, 0.22), transparent 60%),
+    radial-gradient(800px 300px at 90% 0%, rgba(34, 255, 136, 0.12), transparent 60%);
+  --card: rgba(20, 26, 43, 0.92);
+  --card-border: #263049;
+  --text: #e8ecf4;
+  --muted: #8d97ad;
+  --accent: #8b5cf6;
+  --accent-2: #22ff88;
+  --gold: #f5c518;
+  --danger: #ff5d5d;
+  --radius: 14px;
+
+  max-width: 1020px;
   margin: 0 auto;
-  padding: 24px 16px 48px;
+  padding: 0 20px 64px;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   text-align: left;
+  color: var(--text);
+  background: var(--bg-glow);
+  min-height: 100vh;
 }
+
+/* ---------- header ---------- */
 
 .header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 16px;
-  margin-bottom: 20px;
+  padding: 18px 4px;
+  margin: 0 -4px 22px;
+  background: rgba(11, 14, 23, 0.85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--card-border);
 }
 
-.header h1 {
-  margin: 0 0 4px;
-  font-size: 28px;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.monogram {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 0.5px;
+  color: #0b0e17;
+  background: linear-gradient(135deg, var(--accent-2), #7dd3fc);
+  box-shadow: 0 0 22px rgba(34, 255, 136, 0.35);
+  flex-shrink: 0;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: -0.4px;
+  color: var(--text);
 }
 
 .subtitle {
-  margin: 0;
-  color: #666;
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--muted);
 }
 
+.wallet-box {
+  flex-shrink: 0;
+}
+
+/* ---------- cards ---------- */
+
 .card {
-  border: 1px solid #e2e2e2;
-  border-radius: 10px;
-  padding: 16px;
-  margin-bottom: 16px;
-  background: #fff;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 18px;
+  background: var(--card);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
 }
 
 .card h2 {
-  margin: 0 0 10px;
-  font-size: 18px;
+  margin: 0 0 12px;
+  font-size: 17px;
+  letter-spacing: 0.2px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .subheading {
-  margin: 14px 0 6px;
-  font-size: 15px;
+  margin: 16px 0 8px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
 }
+
+.status-card {
+  border-style: dashed;
+}
+
+/* ---------- rows, buttons, pills ---------- */
 
 .row {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
 .row-spread {
@@ -55,46 +127,134 @@
 }
 
 .btn {
-  padding: 8px 16px;
+  padding: 9px 18px;
   font-size: 14px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-  background: #f6f6f6;
+  font-weight: 600;
+  border-radius: 10px;
+  border: 1px solid #3a4666;
+  background: #1a2238;
+  color: var(--text);
   cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  background: #232d4a;
 }
 
 .btn:disabled {
-  opacity: 0.6;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
 .btn-primary {
-  background: #1a73e8;
-  border-color: #1a73e8;
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  border-color: transparent;
   color: #fff;
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.45);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #8b5cf6, #6366f1);
 }
 
 .pill {
   display: inline-block;
   padding: 8px 14px;
   border-radius: 999px;
-  font-size: 14px;
+  font-size: 13px;
   font-family: ui-monospace, Consolas, monospace;
+  background: #1a2238;
+  border: 1px solid #3a4666;
+  color: var(--muted);
 }
 
 .pill-connected {
-  background: #e6f4ea;
-  border: 1px solid #34a853;
-  color: #137333;
+  background: rgba(34, 255, 136, 0.1);
+  border-color: rgba(34, 255, 136, 0.55);
+  color: var(--accent-2);
 }
+
+/* ---------- status badges ---------- */
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  margin-left: 6px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  vertical-align: 2px;
+  border: 1px solid transparent;
+}
+
+.st-open {
+  color: var(--accent-2);
+  border-color: rgba(34, 255, 136, 0.5);
+  background: rgba(34, 255, 136, 0.08);
+}
+
+.st-progress {
+  color: var(--gold);
+  border-color: rgba(245, 197, 24, 0.5);
+  background: rgba(245, 197, 24, 0.08);
+}
+
+.st-done {
+  color: #7dd3fc;
+  border-color: rgba(125, 211, 252, 0.5);
+  background: rgba(125, 211, 252, 0.08);
+}
+
+.st-cancelled {
+  color: var(--danger);
+  border-color: rgba(255, 93, 93, 0.5);
+  background: rgba(255, 93, 93, 0.08);
+}
+
+/* ---------- wallet stat tiles ---------- */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #10162a;
+  border: 1px solid var(--card-border);
+}
+
+.stat strong {
+  font-size: 20px;
+  letter-spacing: -0.3px;
+}
+
+.stat-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--muted);
+}
+
+/* ---------- tournament cards ---------- */
 
 .tournament-list {
   list-style: none;
   padding: 0;
-  margin: 12px 0 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  margin: 14px 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
 }
 
 .tournament-item {
@@ -102,17 +262,99 @@
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  border: 1px solid #eee;
-  border-radius: 8px;
-  padding: 10px 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 14px;
+  background: #10162a;
+  transition: border-color 0.15s ease, transform 0.15s ease;
 }
 
-.status-card {
-  background: #f8f9fa;
+.tournament-item:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
 }
+
+.tournament-main {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.tournament-title {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.prize-line {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.prize-line strong {
+  color: var(--gold);
+  font-size: 16px;
+}
+
+.progress {
+  height: 6px;
+  border-radius: 999px;
+  background: #232d4a;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width 0.3s ease;
+}
+
+/* ---------- live event feed ---------- */
+
+.event-item {
+  grid-column: 1 / -1;
+}
+
+.event-main {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.event-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex-shrink: 0;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.ev-created {
+  background: var(--accent-2);
+  color: var(--accent-2);
+}
+
+.ev-joined {
+  background: #7dd3fc;
+  color: #7dd3fc;
+}
+
+.ev-prize {
+  background: var(--gold);
+  color: var(--gold);
+}
+
+.ev-cancelled {
+  background: var(--danger);
+  color: var(--danger);
+}
+
+/* ---------- text, code, helpers ---------- */
 
 .muted {
-  color: #666;
+  color: var(--muted);
 }
 
 .small {
@@ -120,30 +362,52 @@
 }
 
 .ok {
-  color: #137333;
+  color: var(--accent-2);
 }
 
 .bad {
-  color: #b3261e;
+  color: var(--danger);
 }
 
 code {
   font-family: ui-monospace, Consolas, monospace;
   font-size: 12px;
   word-break: break-all;
+  background: #0e1425;
+  border: 1px solid var(--card-border);
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: #c9d3e8;
 }
 
-.wallet-box {
-  flex-shrink: 0;
+/* ---------- responsive ---------- */
+
+@media (max-width: 760px) {
+  .page {
+    padding: 0 14px 48px;
+  }
+
+  .stats {
+    grid-template-columns: 1fr;
+  }
+
+  .tournament-list {
+    grid-template-columns: 1fr;
+  }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 520px) {
   .header {
     flex-direction: column;
+    align-items: stretch;
   }
 
   .tournament-item {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .tournament-item .btn {
+    width: 100%;
   }
 }
