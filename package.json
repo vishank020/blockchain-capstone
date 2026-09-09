@@ -10,6 +10,7 @@
     "test:backend": "node --test backend/test/server.test.js",
     "test": "node --test tests/tournament.test.js tests/reward-token.test.js backend/test/server.test.js",
     "deploy": "node scripts/deploy_tournament.js",
+    "deploy:live": "node scripts/deploy_live.js",
     "start:backend": "node backend/server.js"
   },
   "keywords": [
@@ -30,6 +31,7 @@
     "morgan": "^1.10.0"
   },
   "devDependencies": {
+    "ethers": "^6.17.0",
     "hardhat": "^3.14.0",
     "tsx": "^4.7.0"
   }

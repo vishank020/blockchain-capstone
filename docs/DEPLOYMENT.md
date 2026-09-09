@@ -14,6 +14,7 @@ npm run compile   # TournamentContract + RewardToken, solc 0.8.24
 npm test          # 22/22 expected
 npm run deploy    # exports deployments/hardhat-local_deployment.json — metadata only, not an on-chain deploy
 ```
+- For a REAL on-chain deploy to the running local node: `npm run deploy:live` (uses the local test deployer key; writes real addresses into the same JSON and prints the `frontend/.env` values). If you see nonce errors, restart `npx hardhat node` for a clean chain and re-run.
 - Note the addresses from `deployments/hardhat-local_deployment.json` (tournament + `rewardToken`).
 - As admin, call `setRewardToken(<TRT address>)`, then `approve()` TRT to the tournament contract before `createTokenTournament()`.
 

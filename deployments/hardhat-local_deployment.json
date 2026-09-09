@@ -1,9 +1,11 @@
 {
   "contractName": "TournamentContract",
-  "contractAddress": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+  "contractAddress": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
   "network": "hardhat-local",
   "chainId": "31337",
-  "deployedAt": "2026-09-09T16:03:38.928Z",
+  "deployedAt": "2026-09-09T17:25:59.598Z",
+  "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "live": true,
   "abi": [
     {
       "inputs": [],
@@ -770,6 +772,6 @@
     "name": "Tournament Reward Token",
     "symbol": "TRT",
     "decimals": 18,
-    "abiFunctions": 12
+    "initialSupply": "1000000 TRT"
   }
 }
