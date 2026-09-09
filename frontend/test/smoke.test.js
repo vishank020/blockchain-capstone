@@ -110,6 +110,22 @@ describe("Frontend smoke tests (no browser needed)", () => {
     }
   });
 
+  it("App handles backend string statuses and shows a provider banner", () => {
+    const app = read(path.join(srcDir, "App.jsx"));
+    assert.ok(
+      app.includes("STATUS_LABELS.includes(status)"),
+      "formatStatus accepts string labels from the backend"
+    );
+    assert.ok(
+      app.includes("metamask.io/download"),
+      "missing-provider banner links to MetaMask"
+    );
+    assert.ok(
+      app.includes("hasProvider"),
+      "provider detection drives wallet UX"
+    );
+  });
+
   it(".env.example documents required env vars", () => {
     const envPath = path.join(rootDir, ".env.example");
     assert.ok(existsSync(envPath), "frontend/.env.example exists");

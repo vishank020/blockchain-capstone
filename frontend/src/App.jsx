@@ -6,6 +6,8 @@ import "./App.css";
 const STATUS_LABELS = ["Open", "InProgress", "Completed", "Cancelled"];
 
 function formatStatus(status) {
+  // Backend serves string labels ("Open"); contracts use enum indexes (0-3).
+  if (STATUS_LABELS.includes(status)) return status;
   const index = Number(status);
   return STATUS_LABELS[index] || `Unknown (${String(status)})`;
 }
@@ -18,7 +20,9 @@ const STATUS_CLASSES = {
 };
 
 function statusBadge(status) {
-  const key = STATUS_LABELS[Number(status)] || "";
+  const key = STATUS_LABELS.includes(status)
+    ? status
+    : STATUS_LABELS[Number(status)] || "";
   return (
     <span className={`badge ${STATUS_CLASSES[key] || ""}`}>
       {formatStatus(status)}
@@ -68,6 +72,7 @@ export default function App() {
   const [claimingId, setClaimingId] = useState(null);
   const [liveEvents, setLiveEvents] = useState([]);
   const [liveConnected, setLiveConnected] = useState(false);
+  const [hasProvider, setHasProvider] = useState(false);
 
   const fetchHealth = useCallback(async () => {
     try {
@@ -95,6 +100,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    setHasProvider(typeof window !== "undefined" && !!window.ethereum);
     fetchHealth();
     fetchTournaments();
   }, [fetchHealth, fetchTournaments]);
@@ -365,12 +371,37 @@ export default function App() {
               {address.slice(0, 6)}...{address.slice(-4)}
             </span>
           ) : (
-            <button className="btn btn-primary" onClick={connectWallet}>
+            <button
+              className="btn btn-primary"
+              onClick={connectWallet}
+              title={
+                hasProvider
+                  ? "Connect via MetaMask"
+                  : "MetaMask not detected — install it first"
+              }
+            >
               Connect Wallet
             </button>
           )}
         </div>
       </header>
+
+      {!hasProvider ? (
+        <div className="banner" role="alert">
+          <strong>MetaMask not detected.</strong>{" "}
+          <span className="muted">
+            Install it to connect your wallet and receive live on-chain events —{" "}
+            <a
+              href="https://metamask.io/download/"
+              target="_blank"
+              rel="noreferrer"
+            >
+              metamask.io/download
+            </a>
+            . Browsing tournaments works without it.
+          </span>
+        </div>
+      ) : null}
 
       <section className="card">
         <h2>Backend</h2>
@@ -542,7 +573,7 @@ export default function App() {
             </span>
           </h2>
         </div>
-        {!window.ethereum ? (
+        {!hasProvider ? (
           <p className="muted">
             Install MetaMask to receive live contract events. The list below
             still refreshes via the Refresh buttons.
