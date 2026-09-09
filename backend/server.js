@@ -261,6 +261,24 @@ app.post("/api/tournaments", (req, res) => {
   }
 });
 
+// Delete Tournament Route (admin; backend mock store only — on-chain
+// cancellation is separate via cancelTournament and keeps funds escrowed)
+app.delete("/api/tournaments/:id", (req, res) => {
+  const tournamentId = parseInt(req.params.id, 10);
+  const index = inMemoryStore.tournaments.findIndex((t) => t.id === tournamentId);
+  if (index === -1) {
+    return res.status(404).json({ error: "Tournament not found" });
+  }
+  const tournament = inMemoryStore.tournaments[index];
+  if (tournament.prizeDistributed) {
+    return res.status(400).json({
+      error: "Prize already distributed — record kept for audit and cannot be deleted",
+    });
+  }
+  const [removed] = inMemoryStore.tournaments.splice(index, 1);
+  res.json({ success: true, tournament: removed });
+});
+
 // Player Registration
 app.post("/api/players/register", (req, res) => {
   const { address } = req.body;

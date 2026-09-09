@@ -74,6 +74,7 @@ export default function App() {
   const [liveConnected, setLiveConnected] = useState(false);
   const [hasProvider, setHasProvider] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [newTournament, setNewTournament] = useState({
     title: "",
     prizePool: "1.0",
@@ -370,6 +371,30 @@ export default function App() {
     }
   };
 
+  const deleteTournament = async (tournament) => {
+    if (!address) {
+      setStatus("Please connect wallet first");
+      return;
+    }
+    setDeletingId(tournament.id);
+    try {
+      const res = await fetch(
+        `${BACKEND_URL}/api/tournaments/${tournament.id}`,
+        { method: "DELETE" }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+      setStatus(`Tournament #${tournament.id} deleted`);
+      await fetchTournaments();
+    } catch (error) {
+      setStatus(`Delete failed: ${getErrorMessage(error)}`);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const joinTournament = async (tournament) => {
     if (!address) {
       setStatus("Please connect wallet first");
@@ -653,12 +678,18 @@ export default function App() {
 
       <section className="card">
         <div className="row row-spread">
-          <h2>Create tournament</h2>
+          <h2>Admin</h2>
         </div>
+        <p className="muted small">
+          Admin actions manage the backend tournament store. On-chain
+          cancellation is separate and keeps escrowed funds locked.
+        </p>
         {!address ? (
-          <p className="muted">Connect wallet to create a tournament.</p>
+          <p className="muted">Connect wallet to manage tournaments.</p>
         ) : (
-          <form className="form-grid" onSubmit={createTournament}>
+          <>
+            <h3 className="subheading">Create tournament</h3>
+            <form className="form-grid" onSubmit={createTournament}>
             <label className="field field-wide">
               <span>Title</span>
               <input
@@ -713,6 +744,45 @@ export default function App() {
               </button>
             </div>
           </form>
+            <h3 className="subheading">
+              All tournaments ({tournaments.length})
+            </h3>
+            {tournaments.length === 0 ? (
+              <p className="muted">No tournaments to manage.</p>
+            ) : (
+              <ul className="tournament-list">
+                {tournaments.map((tournament) => (
+                  <li key={tournament.id} className="tournament-item">
+                    <div className="tournament-main">
+                      <div className="tournament-title">
+                        #{tournament.id} {tournament.title}{" "}
+                        {statusBadge(tournament.status)}
+                      </div>
+                      <div className="muted small">
+                        {tournament.currentPlayers}/{tournament.maxPlayers}{" "}
+                        players · Prize {tournament.prizePool}
+                      </div>
+                    </div>
+                    <button
+                      className="btn btn-danger"
+                      disabled={
+                        deletingId === tournament.id ||
+                        tournament.prizeDistributed
+                      }
+                      title={
+                        tournament.prizeDistributed
+                          ? "Prize distributed — kept for audit"
+                          : "Delete from backend store"
+                      }
+                      onClick={() => deleteTournament(tournament)}
+                    >
+                      {deletingId === tournament.id ? "Deleting..." : "Delete"}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
       </section>
 

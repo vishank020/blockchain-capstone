@@ -73,6 +73,8 @@ describe("Frontend smoke tests (no browser needed)", () => {
       "BrowserProvider", // ethers v6 API
       "/api/tournaments",
       "Create tournament",
+      "Admin",
+      "Delete",
       "maxPlayers",
       "/api/balance/",
       "/api/notifications/",

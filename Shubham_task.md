@@ -5,6 +5,7 @@
 ### Frontend (React + Vite) — MVP done on `shubham/frontend`
 - [x] Player dashboard interface — MVP tournament list in `frontend/src/App.jsx`
 - [x] Tournament creation/joining flow — create form + join flow via backend API
+- [x] Admin page — create form plus per-tournament delete (distributed prizes kept for audit)
 - [x] Wallet connection (MetaMask/WalletConnect) — MetaMask via ethers v6 `BrowserProvider`
 - [x] Token balance display & management — backend + on-chain ETH balance + TRT balance in Wallet card
 - [x] Reward claiming interface — claim-prize + notifications in Rewards card

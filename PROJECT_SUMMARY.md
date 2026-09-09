@@ -56,7 +56,7 @@ Out of scope for this build (documented honestly): real IPFS pinning and oracle 
 - Write `docs/` guides
 
 #### 3. Merge Process
-1. Contracts compiled and tested (`npm run compile`, `npm test` → 22/22)
+1. Contracts compiled and tested (`npm run compile`, `npm test` → 25/25)
 2. Frontend updated with contract addresses and ABIs
 3. Both test integration: frontend subscribes to contract events
 4. Merge to `master` branch after successful testing
@@ -91,7 +91,7 @@ npx hardhat node       # http://127.0.0.1:8545, Chain ID 31337 (eth_chainId → 
 #### 2. Contracts: compile, test, export metadata (terminal 2, repo root)
 ```bash
 npm run compile   # TournamentContract + RewardToken, solc 0.8.24
-npm test          # 22/22 expected (10 backend + 7 tournament-ABI + 5 token)
+npm test          # 25/25 expected (13 backend + 7 tournament-ABI + 5 token)
 npm run deploy    # exports deployments/hardhat-local_deployment.json (metadata only)
 ```
 

@@ -18,7 +18,8 @@
 4. **Tournaments card** — Refresh pulls `GET /api/tournaments`. Each row shows status, players, prize, and fee.
 5. **Join** — click Join (wallet must be connected). Failures show the reason: already joined, full, or not open.
 6. **Rewards card** — My tournaments lists only events you joined. Click **Claim prize** to request payout via `POST /api/tournaments/:id/distribute-prize`. Notifications list your reward receipts.
-7. **Live events card** — `Listening` means the app is subscribed to `TournamentCreated`, `TokenTournamentCreated`, `PlayerRegistered`, `PrizeDistributed`, `TokenPrizeDistributed`, and `TournamentCancelled`. Lists refresh automatically.
+7. **Admin card** — create tournaments with the form, and delete any tournament with its Delete button. Tournaments whose prize was already distributed show a locked Delete (they are kept as the audit trail); deletion acts on the backend store, not the chain.
+8. **Live events card** — `Listening` means the app is subscribed to `TournamentCreated`, `TokenTournamentCreated`, `PlayerRegistered`, `PrizeDistributed`, `TokenPrizeDistributed`, and `TournamentCancelled`. Lists refresh automatically.
 
 ## Troubleshooting
 | Symptom | Fix |

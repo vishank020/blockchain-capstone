@@ -176,6 +176,16 @@
   background: linear-gradient(135deg, #8b5cf6, #6366f1);
 }
 
+.btn-danger {
+  background: transparent;
+  border-color: rgba(255, 93, 93, 0.6);
+  color: var(--danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: rgba(255, 93, 93, 0.12);
+}
+
 .pill {
   display: inline-block;
   padding: 8px 14px;

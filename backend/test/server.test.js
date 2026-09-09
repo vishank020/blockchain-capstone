@@ -136,4 +136,47 @@ describe("Backend API Full Integration Test Suite", () => {
     assert.equal(data.decimals, 18);
     assert.ok(data.address.startsWith("0x"));
   });
+
+  it("10. Admin can create then delete a tournament", async () => {
+    const created = await (
+      await fetch(`${baseUrl}/api/tournaments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "Disposable Cup",
+          prizePool: "0.1",
+          entryFee: "0.01",
+          maxPlayers: 4,
+        }),
+      })
+    ).json();
+    assert.ok(created.tournament.id);
+
+    const del = await fetch(`${baseUrl}/api/tournaments/${created.tournament.id}`, {
+      method: "DELETE",
+    });
+    const delData = await del.json();
+    assert.equal(del.status, 200);
+    assert.equal(delData.tournament.id, created.tournament.id);
+
+    const gone = await fetch(`${baseUrl}/api/tournaments/${created.tournament.id}`);
+    assert.equal(gone.status, 404);
+  });
+
+  it("11. Deleting a missing tournament returns 404", async () => {
+    const res = await fetch(`${baseUrl}/api/tournaments/99999`, {
+      method: "DELETE",
+    });
+    assert.equal(res.status, 404);
+  });
+
+  it("12. Distributed-prize tournaments are kept for audit", async () => {
+    // Tournament #1 had its prize distributed in test 7
+    const res = await fetch(`${baseUrl}/api/tournaments/1`, {
+      method: "DELETE",
+    });
+    assert.equal(res.status, 400);
+    const stillThere = await fetch(`${baseUrl}/api/tournaments/1`);
+    assert.equal(stillThere.status, 200);
+  });
 });

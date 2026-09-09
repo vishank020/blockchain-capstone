@@ -11,7 +11,7 @@ npx hardhat node
 ```bash
 npm install
 npm run compile   # TournamentContract + RewardToken, solc 0.8.24
-npm test          # 22/22 expected
+npm test          # 25/25 expected
 npm run deploy    # exports deployments/hardhat-local_deployment.json — metadata only, not an on-chain deploy
 ```
 - For a REAL on-chain deploy to the running local node: `npm run deploy:live` (uses the local test deployer key; writes real addresses into the same JSON and prints the `frontend/.env` values). If you see nonce errors, restart `npx hardhat node` for a clean chain and re-run.
@@ -46,9 +46,8 @@ npm run preview   # serves dist/ for verification
 4. Live events card shows `Listening`; trigger a join and watch the `PlayerRegistered` event arrive.
 
 ## 5. Merge checklist (feature branch → `master`)
-- `npm test` (root): 22/22.
+- `npm test` (root): 25/25.
 - `npm run build` + `npm test` (frontend): build clean, smoke tests pass.
 - `TournamentContract.json` and `RewardToken.json` in frontend match freshly compiled artifacts.
 - `Shubham_task.md` boxes reflect shipped scope.
 - No secrets committed (`.env` files stay local; only `.env.example` is tracked).
-
