@@ -1,16 +1,30 @@
-# React + Vite
+# Frontend — Tournament DApp
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React + Vite + ethers v6 UI for the decentralized esports tournament system.
 
-Currently, two official plugins are available:
+## What it does
+- MetaMask wallet connection (`ethers.BrowserProvider`, no page reloads)
+- Tournament list from `GET /api/tournaments`, join via `POST /api/tournaments/:id/join`
+- Wallet card: backend ETH balance, live chain ETH balance, TRT balance (`balanceOf`)
+- Rewards card: my tournaments with prize claiming (`POST /api/tournaments/:id/distribute-prize`) + reward notifications
+- Live events card: subscribes to `TournamentCreated`, `TokenTournamentCreated`, `PlayerRegistered`, `PrizeDistributed`, `TokenPrizeDistributed`, `TournamentCancelled` with auto-refresh
+- Contract revert reasons surfaced verbatim in the status bar
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Setup
+```bash
+npm install
+cp .env.example .env   # VITE_BACKEND_URL, VITE_CONTRACT_ADDRESS, VITE_REWARD_TOKEN_ADDRESS, VITE_CHAIN_ID
+npm run dev            # default http://localhost:5173
+```
 
-## React Compiler
+## Verify
+```bash
+npm run build   # must pass; produces dist/
+npm test        # 6/6 smoke tests (node:test, no browser)
+npm run lint    # oxlint
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+## Key files
+- `src/config.js` — backend URL, contract + token addresses, ABIs (env with local defaults)
+- `src/TournamentContract.json`, `src/RewardToken.json` — bundled ABI copies; re-copy from `../artifacts/` after every `npm run compile` at the repo root
+- `src/App.jsx` — all UI sections; `src/App.css` — plain CSS, responsive at 640px

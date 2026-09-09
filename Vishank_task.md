@@ -47,31 +47,39 @@
 
 ### Integration Points for Shubham's Frontend
 
-1. **Contract ABI**:
-   - Location: `artifacts/contracts/TournamentContract.sol/TournamentContract.json`
-   - Generated automatically with `npm run compile`.
+1. **Contract ABIs**:
+    - `artifacts/contracts/TournamentContract.sol/TournamentContract.json`
+    - `artifacts/contracts/RewardToken.sol/RewardToken.json` (TRT ERC-20)
+    - Generated automatically with `npm run compile`.
 
 2. **Default Local Contract Address**:
    - `0x5FbDB2315678afecb367f032d93F642f64180aa3` (exported in `deployments/hardhat-local_deployment.json`).
 
 3. **Smart Contract Events for Frontend Listeners**:
-   - `TournamentCreated(uint256 indexed tournamentId, string title, uint256 prizePool, uint256 entryFee, uint256 maxPlayers, string ipfsMetadataHash)`
-   - `PlayerRegistered(uint256 indexed tournamentId, address indexed player)`
-   - `GlobalPlayerRegistered(address indexed player)`
-   - `PrizeDistributed(uint256 indexed tournamentId, address indexed winner, uint256 amount)`
-   - `TournamentCancelled(uint256 indexed tournamentId)`
+    - `TournamentCreated(uint256 indexed tournamentId, string title, uint256 prizePool, uint256 entryFee, uint256 maxPlayers, string ipfsMetadataHash)`
+    - `TokenTournamentCreated(uint256 indexed tournamentId, string title, uint256 prizeTokens, uint256 entryFeeTokens, uint256 maxPlayers, string ipfsMetadataHash)`
+    - `PlayerRegistered(uint256 indexed tournamentId, address indexed player)`
+    - `GlobalPlayerRegistered(address indexed player)`
+    - `PrizeDistributed(uint256 indexed tournamentId, address indexed winner, uint256 amount)`
+    - `TokenPrizeDistributed(uint256 indexed tournamentId, address indexed winner, uint256 amount)`
+    - `TournamentCancelled(uint256 indexed tournamentId)`
+    - `RewardTokenUpdated(address indexed previousToken, address indexed newToken)`
 
 4. **Backend API Endpoints (Port 4000)**:
-   - `GET /health` - Health check
-   - `POST /api/auth/login` - Authenticate wallet address & retrieve JWT
-   - `GET /api/tournaments` - List all tournaments
-   - `POST /api/tournaments` - Create a tournament (returns metadata + IPFS CID)
-   - `GET /api/tournaments/:id` - Fetch details of specific tournament
-   - `POST /api/tournaments/:id/join` - Join tournament as a registered player
-   - `POST /api/tournaments/:id/distribute-prize` - Distribute prize pool to winner
-   - `POST /api/oracle/verify-match` - Oracle verify match outcome
-   - `POST /api/ipfs/upload` - Store metadata in IPFS
-   - `GET /api/balance/:address` - Inspect wallet balance
+    - `GET /health` - Health check
+    - `POST /api/auth/login` - Authenticate wallet address & retrieve JWT
+    - `GET /api/tournaments` - List all tournaments
+    - `POST /api/tournaments` - Create a tournament (returns metadata + IPFS CID)
+    - `GET /api/tournaments/:id` - Fetch details of specific tournament
+    - `POST /api/tournaments/:id/join` - Join tournament as a registered player
+    - `POST /api/tournaments/:id/distribute-prize` - Distribute prize pool to winner
+    - `POST /api/players/register` - Register a player address globally
+    - `GET /api/notifications/:address` - List reward notifications for an address
+    - `POST /api/oracle/verify-match` - Oracle verify match outcome
+    - `POST /api/ipfs/upload` - Store metadata in IPFS
+    - `GET /api/ipfs/:hash` - Retrieve pinned metadata
+    - `GET /api/balance/:address` - Inspect wallet balance
+    - `GET /api/token` - TRT reward-token metadata (name, symbol, decimals, address)
 
 ---
 

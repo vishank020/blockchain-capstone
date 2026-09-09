@@ -1,4 +1,4 @@
-# Blockchain-Based Decentralized Tournament Reward System
+# Blockchain-Based Decentralized Tournament Reward and Digital Token Distribution System for Esports Players to Enable Transparent Prize Distribution
 
 ## Phase-I: Group Formation and Title Finalization
 
@@ -9,62 +9,63 @@
 
 ### Group Formation and Title Finalization
 
-This capstone project is undertaken by a two-member group: Shubham (Team Lead), responsible for smart-contract design, the blockchain layer, and the access-control gateway; and Vishank, responsible for the AI & ML module, anomaly detection and consent risk scoring - along with the frontend dashboards and documentation. The project is guided by the course instructor. The project's title, "Blockchain-Based Decentralized Tournament Reward System for Esports to Ensure Transparent Prize Distribution," was assigned at the outset and has been retained unchanged as the finalized title. The system carries the internal project code name "TourneyReward" for branding and reference across the codebase and documentation, but this does not alter the approved title. The application area is esports and gaming informatics, combined with applied cryptography, distributed ledger technology, and applied machine learning, targeting a multi-player consortium governed by relevant gaming and data regulations - a choice grounded in the group's finding that traditional centralized reward systems store points centrally, unverifiable by players, which this project sets out to fix. Based on this research, the group finalized a hybrid on-chain/off-chain methodology: a structured reward artefact in Solidity, AES-256-GCM/ECIES envelope encryption with off-chain IPFS storage, a stateless access-control gateway, an immutable audit trail, and an unsupervised anomaly-detection engine paired with an explainable XGBoost/SHAP risk scorer built using Hardhat, FastAPI, and React, and aligned with the SIH MedTech/HealthTech and Blockchain/Cybersecurity themes, ABDM, and relevant gaming regulations.
+This capstone project is undertaken by a two-member group: Vishank, responsible for the smart contracts, the blockchain layer, and the backend API; and Shubham, responsible for the frontend dashboards, integration/testing, and documentation (per `Vishank_task.md` / `Shubham_task.md`). The project is guided by the course instructor. The project's title, "Blockchain-Based Decentralized Tournament Reward and Digital Token Distribution System for Esports Players to Enable Transparent Prize Distribution," was assigned at the outset and has been retained unchanged as the finalized title. The system carries the internal project code name "TourneyReward" for branding and reference across the codebase and documentation, but this does not alter the approved title. The application area is esports and gaming informatics, combined with applied cryptography and distributed ledger technology, targeting transparent prize distribution — a choice grounded in the group's finding that traditional centralized reward systems store points centrally, unverifiable by players, which this project sets out to fix. Based on this research, the group finalized an on-chain-escrow methodology: tournament lifecycle in Solidity (creation, registration, ETH and TRT prize pools, winner payout), an Express access-control gateway over a backend API, an immutable audit trail of indexed contract events mirrored into a queryable store, and React dashboards — built with Hardhat, Node.js/Express, and React, and aligned with the Blockchain/Cybersecurity themes and relevant gaming regulations.
 
 ### Project Details
 
-- **Project Title:** Blockchain-Based Decentralized Tournament Reward System for Esports to Ensure Transparent Prize Distribution
+- **Project Title:** Blockchain-Based Decentralized Tournament Reward and Digital Token Distribution System for Esports Players to Enable Transparent Prize Distribution
 - **Internal Code Name:** TourneyReward
 - **Guide:** Course Instructor
-- **Application Area:** Esports and gaming informatics, applied cryptography, distributed ledger technology, and applied machine learning
+- **Application Area:** Esports and gaming informatics, applied cryptography, distributed ledger technology
 - **Regulatory Framework:** Relevant gaming and data regulations
 
 ### Research and Methodology
 
-Based on research into traditional centralized reward systems, the group found that these mandates a reward artefact but stores it centrally, unverifiable by the player. This project sets out to fix this by implementing a hybrid on-chain/off-chain methodology:
+Based on research into traditional centralized reward systems, the group found that these store rewards centrally, unverifiable by the player. This project sets out to fix this with an on-chain-escrow methodology:
 
-- **Structured reward artefact** in Solidity for tournament management, token distribution, prize pools, player registration, and winner payouts
-- **AES-256-GCM/ECIES envelope encryption** with off-chain IPFS storage for secure data handling
-- **Stateless access-control gateway** for managing player interactions
-- **Immutable audit trail** for all reward transactions
-- **Unsupervised anomaly-detection engine** paired with an explainable XGBoost/SHAP risk scorer for fraud detection
-- **Frontend dashboards** built with React for player interface
+- **Tournament lifecycle in Solidity** — `TournamentContract` for tournament management, player registration, ETH and TRT prize-pool escrow, and winner payouts; `RewardToken` (TRT ERC-20) for digital token distribution
+- **Off-chain metadata on IPFS** — tournament rules/brackets pinned off-chain, only the CID anchored on-chain (currently via a mock pinning adapter)
+- **Express gateway** — backend API mediating player interactions (tournaments, oracle attestation, auth, notifications, balances)
+- **Immutable audit trail** — every creation, registration, payout, and cancellation emitted as an indexed contract event and surfaced live in the frontend
+- **React dashboards** — player wallet/tournaments/rewards views with a live on-chain event feed
+
+Out of scope for this build (documented honestly): real IPFS pinning and oracle attestation (mock adapters), signature-based login (address-trusting JWT), persistent database (in-memory store), testnet deployment (Hardhat local only).
 
 ### Technology Stack
 
-- **Blockchain:** Ethereum, Solidity, Hardhat
-- **Frontend:** React, Next.js, Web3.js, Ethers.js, MetaMask
-- **Backend:** Node.js, Express, IPFS
-- **AI/ML:** Python, XGBoost, SHAP, FastAPI
-- **Encryption:** AES-256-GCM, ECIES
-- **Storage:** IPFS
-- **Testing:** Hardhat tests, Jest, React Testing Library
+- **Blockchain:** Ethereum, Solidity 0.8.24, Hardhat
+- **Contracts:** `TournamentContract` (ETH + TRT prize pools), `RewardToken` (TRT ERC-20)
+- **Frontend:** React, Vite, Ethers.js v6, MetaMask
+- **Backend:** Node.js, Express, IPFS (mock pinning adapter)
+- **Storage:** IPFS CIDs anchored on-chain (mock adapter; real pinning out of scope)
+- **Testing:** `node:test` suites — 21 root tests, 6 frontend smoke tests
 
 ### Independent Workflow
 
-#### 1. Vishank works on Smart Contracts
-- Develop contracts in `contracts/`
-- Write test scripts in `tests/`
-- Deploy to local Hardhat network
-- Generate ABI: `npx hardhat compile`
+#### 1. Vishank works on Smart Contracts + Backend
+- Develop contracts in `contracts/` (`TournamentContract.sol`, `RewardToken.sol`)
+- Write test scripts in `tests/` and `backend/test/`
+- Deploy to local Hardhat network (`npm run deploy`)
+- Generate ABI: `npm run compile`
 
-#### 2. Shubham works on Frontend
+#### 2. Shubham works on Frontend + Docs
 - Develop React components in `frontend/`
-- Connect to contract ABI generated by Vishank
+- Connect to contract ABIs generated by Vishank
 - Implement wallet connections
 - Interface with backend API
+- Write `docs/` guides
 
 #### 3. Merge Process
-1. Vishank deploys contracts to testnet
-2. Shubham updates frontend with contract addresses
-3. Both test integration: frontend calls contract events
-4. Merge to `main` branch after successful testing
+1. Contracts compiled and tested (`npm run compile`, `npm test` → 21/21)
+2. Frontend updated with contract addresses and ABIs
+3. Both test integration: frontend subscribes to contract events
+4. Merge to `master` branch after successful testing
 
 #### 4. Git Branch Strategy
-- `main` - production-ready code
+- `master` - production-ready code
 - `vishank/contracts` - smart contract development
 - `shubham/frontend` - frontend development
-- Feature branches off respective development branches
+- Feature branches (e.g. `feat/reward-token`, `docs/refresh`) off the relevant branch
 
 ### Setup Instructions
 
@@ -74,24 +75,26 @@ Based on research into traditional centralized reward systems, the group found t
 - Git
 - MetaMask browser extension
 
-#### Frontend Setup (Shubham)
+#### Frontend Setup
 ```bash
 cd frontend
 npm install
+cp .env.example .env   # VITE_BACKEND_URL, VITE_CONTRACT_ADDRESS, VITE_REWARD_TOKEN_ADDRESS
 npm run dev
 ```
 
-#### Backend & Contracts (Vishank)
+#### Backend & Contracts (repo root)
 ```bash
-cd backend
 npm install
-npx hardhat node  # Start local blockchain
-npx hardhat run scripts/deploy.ts --network localhost  # Deploy contracts
+npm run compile   # TournamentContract + RewardToken
+npm test          # 21/21 expected
+npm run deploy    # writes deployments/hardhat-local_deployment.json
+npm run start:backend   # Express API on http://localhost:4000
 ```
 
 #### Integration
-1. Get contract address from Vishank's deployment
-2. Update frontend `.env` with contract address
+1. Get contract + token addresses from `deployments/hardhat-local_deployment.json`
+2. Update frontend `.env` with both addresses
 3. Start both frontend and backend
 4. Test tournament creation, token distribution, and reward claiming
 

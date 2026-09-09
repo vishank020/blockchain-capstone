@@ -1,25 +1,31 @@
-# Blockchain-Based Decentralized Tournament Reward System
+# Blockchain-Based Decentralized Tournament Reward and Digital Token Distribution System for Esports Players to Enable Transparent Prize Distribution
 
 ## Project Description
-Decentralized platform for esports tournament rewards and digital token distribution enabling transparent prize distribution to players using blockchain technology.
+Decentralized platform for esports tournament rewards and digital token distribution enabling transparent prize distribution to players using blockchain technology. Tournaments run on-chain escrow in native ETH or the TRT ERC-20 reward token (`contracts/RewardToken.sol`); every lifecycle step is emitted as an indexed contract event for transparent auditing.
 
 ## Team Division
 
 ### Vishank's Responsibilities
-- Smart Contracts (Solidity): Tournament management, token distribution, prize pools, player registration, winner payouts
-- Backend API (Node.js): IPFS integration, oracle services, authentication, notification system
-- Deliverables: `contracts/`, `scripts/`, `backend/`, `tests/`
+- Smart Contracts (Solidity): Tournament management, TRT token distribution, prize pools, player registration, winner payouts
+- Backend API (Node.js): IPFS integration, oracle services, authentication, notification system, token metadata
+- Deliverables: `contracts/`, `scripts/`, `backend/`, `tests/`, `deployments/`
 
 ### Shubham's Responsibilities
-- Frontend (React/Next.js): Player dashboard, tournament interface, wallet connection, token management
-- Integration & Testing: Contract interaction, event listening, API consumption, unit tests
-- Deliverables: `frontend/`, integration tests, documentation
+- Frontend (React + Vite): Player dashboard, tournament interface, wallet connection, token balances, reward claiming, live event feed
+- Integration & Testing: Contract interaction, event listening, API consumption, smoke tests
+- Deliverables: `frontend/`, `docs/` (user, developer, deployment guides)
 
 ## Technology Stack
-- **Blockchain**: Ethereum, Solidity, Hardhat
-- **Frontend**: React, Next.js, Web3.js, Ethers.js, MetaMask
-- **Backend**: Node.js, Express, IPFS
-- **Testing**: Hardhat tests, Jest, React Testing Library
+- **Blockchain**: Ethereum, Solidity 0.8.24, Hardhat
+- **Contracts**: `TournamentContract` (ETH + TRT prize pools), `RewardToken` (TRT ERC-20)
+- **Frontend**: React, Vite, Ethers.js v6, MetaMask
+- **Backend**: Node.js, Express, IPFS (mock pinning)
+- **Testing**: `node:test` suites — 21 root tests (backend + contract ABI + token), 6 frontend smoke tests
+
+## Docs
+- `docs/USER_GUIDE.md` — player walkthrough and troubleshooting
+- `docs/DEVELOPER_GUIDE.md` — architecture, setup, integration points
+- `docs/DEPLOYMENT.md` — deploy, integration check, merge checklist
 
 ## Independent Workflow
 
@@ -36,16 +42,16 @@ Decentralized platform for esports tournament rewards and digital token distribu
 - Interface with backend API
 
 ### 3. Merge Process
-1. Vishank deploys contracts to testnet
-2. Shubham updates frontend with contract addresses
+1. Contracts compiled and tested (`npm run compile`, `npm test` → 21/21)
+2. Frontend updated with contract addresses/ABIs
 3. Both test integration: frontend calls contract events
-4. Merge to `main` branch after successful testing
+4. Merge to `master` branch after successful testing
 
 ### 4. Git Branch Strategy
-- `main` - production-ready code
+- `master` - production-ready code
 - `vishank/contracts` - smart contract development
 - `shubham/frontend` - frontend development
-- Feature branches off respective development branches
+- Feature branches (e.g. `feat/reward-token`, `docs/refresh`) off the relevant branch
 
 ## Setup Instructions
 
@@ -55,26 +61,28 @@ Decentralized platform for esports tournament rewards and digital token distribu
 - Git
 - MetaMask browser extension
 
-### Frontend Setup (Shubham)
+### Backend & Contracts (repo root)
+```bash
+npm install
+npm run compile   # compile TournamentContract + RewardToken
+npm test          # 21/21 expected
+npm run deploy    # writes deployments/hardhat-local_deployment.json
+npm run start:backend   # Express API on http://localhost:4000
+```
+
+### Frontend
 ```bash
 cd frontend
 npm install
-npm run dev
-```
-
-### Backend & Contracts (Vishank)
-```bash
-cd backend
-npm install
-npx hardhat node  # Start local blockchain
-npx hardhat run scripts/deploy.ts --network localhost  # Deploy contracts
+cp .env.example .env   # set VITE_BACKEND_URL, VITE_CONTRACT_ADDRESS, VITE_REWARD_TOKEN_ADDRESS
+npm run dev            # default http://localhost:5173
 ```
 
 ### Integration
-1. Get contract address from Vishank's deployment
-2. Update frontend `.env` with contract address
+1. Get contract + token addresses from `deployments/hardhat-local_deployment.json`
+2. Update frontend `.env` with both addresses
 3. Start both frontend and backend
-4. Test tournament creation, token distribution, and reward claiming
+4. Test tournament creation, token distribution, and reward claiming (see `docs/USER_GUIDE.md`)
 
 ## Merge Guidelines
 - No breaking changes to contract ABI without consensus

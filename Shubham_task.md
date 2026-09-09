@@ -2,7 +2,7 @@
 
 ## Area of Responsibility: Frontend + Integration/Testing
 
-### Frontend (React/Next.js) — MVP done on `shubham/frontend`
+### Frontend (React + Vite) — MVP done on `shubham/frontend`
 - [x] Player dashboard interface — MVP tournament list in `frontend/src/App.jsx`
 - [x] Tournament creation/joining flow — join flow via backend API; creation still direct-contract only
 - [x] Wallet connection (MetaMask/WalletConnect) — MetaMask via ethers v6 `BrowserProvider`
@@ -30,11 +30,11 @@
 - [x] Setup instructions for local development — in `docs/DEVELOPER_GUIDE.md`
 - [x] Deployment guides (frontend + backend) — `docs/DEPLOYMENT.md`
 
-### Development Environment
-- [ ] Next.js or React project setup
-- [ ] CSS framework (Tailwind/Chakra) config
-- [ ] ESLint/Prettier configuration
-- [ ] TypeScript strict mode
+### Development Environment (decisions: React + Vite, plain CSS, oxlint, JSX — see `docs/DEVELOPER_GUIDE.md`)
+- [x] Next.js or React project setup — React + Vite scaffold in `frontend/`
+- [x] CSS framework (Tailwind/Chakra) config — decided: plain `App.css`, no framework
+- [x] ESLint/Prettier configuration — decided: oxlint via `npm run lint`
+- [ ] TypeScript strict mode — deferred; frontend is JSX
 
 ### Integration Points with Vishank's Work
 - Consume Vishank's API endpoints

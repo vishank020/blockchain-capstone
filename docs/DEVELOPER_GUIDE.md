@@ -6,7 +6,7 @@
 - `backend/server.js` (Express, port 4000) — tournament indexing, IPFS pinning (mock), oracle verification (HMAC), JWT auth, notifications, balances, `GET /api/token` (TRT metadata).
 - `frontend/src/` — React + Vite + ethers v6. No framework CSS; plain `App.css`.
   - `config.js` — `BACKEND_URL`, `CONTRACT_ADDRESS`, `CONTRACT_ABI` (reads `VITE_*` env with local defaults).
-  - `TournamentContract.json` — bundled ABI copy. Re-copy after every `npm run compile`.
+  - `TournamentContract.json` + `RewardToken.json` — bundled ABI copies. Re-copy both after every `npm run compile`.
   - `App.jsx` — wallet, backend health, wallet balances, rewards, live events, tournaments, status bar.
 
 ## Local setup
@@ -14,14 +14,14 @@
 # root: contracts + backend
 npm install
 npm run compile
-npm test            # 15/15 expected (8 backend + 7 contract-ABI)
+npm test            # 21/21 expected (9 backend + 7 tournament-ABI + 5 token)
 npm run deploy      # local Hardhat network
 npm run start:backend
 
 # frontend (second terminal)
 cd frontend
 npm install
-cp .env.example .env   # adjust VITE_BACKEND_URL / VITE_CONTRACT_ADDRESS
+cp .env.example .env   # adjust VITE_BACKEND_URL / VITE_CONTRACT_ADDRESS / VITE_REWARD_TOKEN_ADDRESS
 npm run dev            # default http://localhost:5173
 ```
 
