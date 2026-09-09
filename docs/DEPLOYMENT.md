@@ -7,8 +7,9 @@ npm run compile
 npm test
 npm run deploy
 ```
-- Note the deployed address from `deployments/hardhat-local_deployment.json`.
+- Note the deployed addresses from `deployments/hardhat-local_deployment.json` (tournament + `rewardToken`).
 - Keep the local node (`npx hardhat node`) running on `http://127.0.0.1:8545` (Chain ID 31337).
+- As admin, call `setRewardToken(<TRT address>)`, then `approve()` TRT to the tournament contract before `createTokenTournament()`.
 
 ## 2. Backend (Express)
 ```bash
@@ -23,7 +24,7 @@ curl http://localhost:4000/health   # expect {"status":"healthy",...}
 cd frontend
 npm install
 cp .env.example .env
-# set VITE_BACKEND_URL and VITE_CONTRACT_ADDRESS in .env
+# set VITE_BACKEND_URL, VITE_CONTRACT_ADDRESS, VITE_REWARD_TOKEN_ADDRESS in .env
 npm run build
 npm test     # smoke tests, requires dist/ from the build step
 npm run preview   # serves dist/ for verification

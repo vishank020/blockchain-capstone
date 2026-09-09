@@ -37,6 +37,9 @@ describe("Frontend smoke tests (no browser needed)", () => {
       "joinTournament",
       "createTournament",
       "distributePrize",
+      "createTokenTournament",
+      "joinTokenTournament",
+      "distributeTokenPrize",
     ]) {
       assert.ok(names.has(fn), `ABI has function ${fn}`);
     }
@@ -45,8 +48,21 @@ describe("Frontend smoke tests (no browser needed)", () => {
       "PlayerRegistered",
       "PrizeDistributed",
       "TournamentCancelled",
+      "TokenTournamentCreated",
+      "TokenPrizeDistributed",
     ]) {
       assert.ok(names.has(ev), `ABI has event ${ev}`);
+    }
+  });
+
+  it("bundled TRT ABI exposes the ERC-20 surface the wallet card needs", () => {
+    const tokenPath = path.join(srcDir, "RewardToken.json");
+    assert.ok(existsSync(tokenPath), "bundled TRT ABI exists");
+    const artifact = JSON.parse(read(tokenPath));
+    const abi = artifact.abi || artifact;
+    const names = new Set(abi.map((e) => e.name).filter(Boolean));
+    for (const fn of ["balanceOf", "transfer", "approve", "transferFrom", "mint"]) {
+      assert.ok(names.has(fn), `TRT ABI has function ${fn}`);
     }
   });
 
@@ -62,6 +78,9 @@ describe("Frontend smoke tests (no browser needed)", () => {
       "Claim prize",
       "TournamentCreated",
       "PrizeDistributed",
+      "TokenPrizeDistributed",
+      "balanceOf",
+      "REWARD_TOKEN_ADDRESS",
       "removeAllListeners", // listener cleanup
       "getErrorMessage", // revert reasons surfaced
     ]) {
@@ -81,6 +100,7 @@ describe("Frontend smoke tests (no browser needed)", () => {
     for (const key of [
       "VITE_BACKEND_URL",
       "VITE_CONTRACT_ADDRESS",
+      "VITE_REWARD_TOKEN_ADDRESS",
       "VITE_CHAIN_ID",
     ]) {
       assert.ok(env.includes(key), `.env.example documents ${key}`);

@@ -118,4 +118,14 @@ describe("Backend API Full Integration Test Suite", () => {
     assert.equal(res.status, 200);
     assert.equal(data.tokenSymbol, "ETH");
   });
+
+  it("9. Token endpoint should return TRT metadata", async () => {
+    const res = await fetch(`${baseUrl}/api/token`);
+    const data = await res.json();
+    assert.equal(res.status, 200);
+    assert.equal(data.symbol, "TRT");
+    assert.equal(data.name, "Tournament Reward Token");
+    assert.equal(data.decimals, 18);
+    assert.ok(data.address.startsWith("0x"));
+  });
 });

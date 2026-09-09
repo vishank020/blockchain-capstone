@@ -3,7 +3,7 @@
   "contractAddress": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
   "network": "hardhat-local",
   "chainId": "31337",
-  "deployedAt": "2026-08-24T14:35:27.284Z",
+  "deployedAt": "2026-09-09T16:03:38.928Z",
   "abi": [
     {
       "inputs": [],
@@ -110,6 +110,93 @@
       "inputs": [
         {
           "indexed": true,
+          "internalType": "address",
+          "name": "previousToken",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newToken",
+          "type": "address"
+        }
+      ],
+      "name": "RewardTokenUpdated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "tournamentId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "winner",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "TokenPrizeDistributed",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "tournamentId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "title",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "prizeTokens",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "entryFeeTokens",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "maxPlayers",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "ipfsMetadataHash",
+          "type": "string"
+        }
+      ],
+      "name": "TokenTournamentCreated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
           "internalType": "uint256",
           "name": "tournamentId",
           "type": "uint256"
@@ -201,6 +288,45 @@
         },
         {
           "internalType": "uint256",
+          "name": "_entryFeeTokens",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_maxPlayers",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_prizeTokens",
+          "type": "uint256"
+        }
+      ],
+      "name": "createTokenTournament",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "_title",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_ipfsMetadataHash",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
           "name": "_entryFee",
           "type": "uint256"
         },
@@ -235,6 +361,24 @@
         }
       ],
       "name": "distributePrize",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_tournamentId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "_winner",
+          "type": "address"
+        }
+      ],
+      "name": "distributeTokenPrize",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -363,6 +507,38 @@
       "inputs": [
         {
           "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "isTokenTournament",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_tournamentId",
+          "type": "uint256"
+        }
+      ],
+      "name": "joinTokenTournament",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
           "name": "_tournamentId",
           "type": "uint256"
         }
@@ -412,6 +588,19 @@
       "type": "function"
     },
     {
+      "inputs": [],
+      "name": "rewardToken",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [
         {
           "internalType": "address",
@@ -435,6 +624,38 @@
       "name": "setOracle",
       "outputs": [],
       "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_newToken",
+          "type": "address"
+        }
+      ],
+      "name": "setRewardToken",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "tokenPrizePools",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -542,5 +763,13 @@
       "stateMutability": "payable",
       "type": "receive"
     }
-  ]
+  ],
+  "rewardToken": {
+    "contractName": "RewardToken",
+    "contractAddress": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+    "name": "Tournament Reward Token",
+    "symbol": "TRT",
+    "decimals": 18,
+    "abiFunctions": 12
+  }
 }

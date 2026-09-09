@@ -2,7 +2,7 @@
 
 ## Area of Responsibility: Smart Contracts + Backend API
 
-### Smart Contracts (Solidity) ✅ 100% COMPLETE (6/6)
+### Smart Contracts (Solidity) ✅ 100% COMPLETE (6/6 + TRT extension)
 
 - [x] **Deploy Tournament contract** - `TournamentContract.sol` compiled with Solidity `0.8.24` on Hardhat
 - [x] **Token & prize pool distribution logic** - Prize pool escrow with direct ETH winner payout mechanisms implemented
@@ -10,6 +10,7 @@
 - [x] **Player registration & verification** - `registerPlayer()` and `joinTournament()` with duplicate prevention and fee validation
 - [x] **Winner payout system** - `distributePrize()` with admin/oracle access control and secure Ether transfer
 - [x] **Role-based access control (admin / oracle / player)** - `onlyAdmin` and `onlyAdminOrOracle` modifiers with ownership transfer (`setAdmin`, `setOracle`)
+- [x] **ERC-20 reward token (TRT)** - `RewardToken.sol` (mintable by owner); token tournament path `createTokenTournament()` / `joinTokenTournament()` / `distributeTokenPrize()` with `TokenTournamentCreated` / `TokenPrizeDistributed` events; ETH flow untouched
 
 ---
 
@@ -21,6 +22,7 @@
 - [x] **Authentication & authorization** - JWT issuance (`POST /api/auth/login`) and Bearer token verification middleware
 - [x] **Notification system for rewards** - `POST /api/notifications/reward` and `GET /api/notifications/:address`
 - [x] **Token & wallet balance monitoring** - `GET /api/balance/:address` for network and ETH balance inspection
+- [x] **Reward token metadata** - `GET /api/token` returns TRT name/symbol/decimals/address/usage
 
 ---
 
@@ -37,7 +39,7 @@
 
 - [x] **Solidity contracts**: [`contracts/TournamentContract.sol`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/contracts/TournamentContract.sol)
 - [x] **Migration & deployment scripts**: [`scripts/deploy_tournament.js`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/scripts/deploy_tournament.js)
-- [x] **Test suites**: [`tests/tournament.test.js`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/tests/tournament.test.js) & [`backend/test/server.test.js`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/backend/test/server.test.js) (15/15 tests passing)
+- [x] **Test suites**: [`tests/tournament.test.js`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/tests/tournament.test.js), [`tests/reward-token.test.js`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/tests/reward-token.test.js) & [`backend/test/server.test.js`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/backend/test/server.test.js) (21/21 tests passing)
 - [x] **Backend API**: [`backend/server.js`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/backend/server.js)
 - [x] **Compiled Artifacts**: [`artifacts/contracts/TournamentContract.sol/TournamentContract.json`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/artifacts/contracts/TournamentContract.sol/TournamentContract.json)
 
@@ -79,7 +81,7 @@
 # 1. Compile smart contracts
 npm run compile
 
-# 2. Run both Contract and Backend test suites (15 tests)
+# 2. Run Contract, Token, and Backend test suites (21 tests)
 npm test
 
 # 3. Deploy contract locally

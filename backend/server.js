@@ -338,6 +338,22 @@ app.get("/api/balance/:address", (req, res) => {
   });
 });
 
+// Reward Token (TRT) Metadata Route — ERC-20 used for token prize pools
+app.get("/api/token", (req, res) => {
+  res.json({
+    name: "Tournament Reward Token",
+    symbol: "TRT",
+    decimals: 18,
+    address:
+      process.env.REWARD_TOKEN_ADDRESS ||
+      "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+    network: "Hardhat Local (ChainId: 31337)",
+    initialSupply: "1000000 TRT",
+    usage:
+      "Approve TRT to TournamentContract, then createTokenTournament / joinTokenTournament / distributeTokenPrize",
+  });
+});
+
 // Start Server if directly invoked
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   app.listen(PORT, () => {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ethers } from "ethers";
-import { BACKEND_URL, CONTRACT_ABI, CONTRACT_ADDRESS } from "./config.js";
+import { BACKEND_URL, CONTRACT_ABI, CONTRACT_ADDRESS, REWARD_TOKEN_ABI, REWARD_TOKEN_ADDRESS } from "./config.js";
 import "./App.css";
 
 const STATUS_LABELS = ["Open", "InProgress", "Completed", "Cancelled"];
@@ -33,6 +33,7 @@ export default function App() {
   const [onChainCount, setOnChainCount] = useState(null);
   const [backendBalance, setBackendBalance] = useState(null);
   const [chainBalance, setChainBalance] = useState(null);
+  const [trtBalance, setTrtBalance] = useState(null);
   const [balanceLoading, setBalanceLoading] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [claimingId, setClaimingId] = useState(null);
@@ -90,6 +91,11 @@ export default function App() {
         pushEvent("TournamentCreated", `#${tournamentId.toString()} ${title}`);
         fetchTournaments();
       });
+      contract.on("TokenTournamentCreated", (tournamentId, title) => {
+        if (cancelled) return;
+        pushEvent("TokenTournamentCreated", `#${tournamentId.toString()} ${title} (TRT)`);
+        fetchTournaments();
+      });
       contract.on("PlayerRegistered", (tournamentId, player) => {
         if (cancelled) return;
         pushEvent(
@@ -107,6 +113,18 @@ export default function App() {
         fetchTournaments();
         if (address) fetchNotifications(address);
       });
+      contract.on("TokenPrizeDistributed", (tournamentId, winner, amount) => {
+        if (cancelled) return;
+        pushEvent(
+          "TokenPrizeDistributed",
+          `#${tournamentId.toString()} ${ethers.formatEther(amount)} TRT`
+        );
+        fetchTournaments();
+        if (address) {
+          fetchNotifications(address);
+          fetchChainBalance();
+        }
+      });
       contract.on("TournamentCancelled", (tournamentId) => {
         if (cancelled) return;
         pushEvent("TournamentCancelled", `#${tournamentId.toString()}`);
@@ -121,7 +139,7 @@ export default function App() {
       if (contract) contract.removeAllListeners();
       setLiveConnected(false);
     };
-  }, [fetchTournaments, fetchNotifications, address]);
+  }, [fetchTournaments, fetchNotifications, fetchChainBalance, address]);
 
   const fetchBalance = useCallback(async (walletAddress) => {
     if (!walletAddress) return;
@@ -163,6 +181,18 @@ export default function App() {
     } catch {
       setChainBalance(null);
     }
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const token = new ethers.Contract(
+        REWARD_TOKEN_ADDRESS,
+        REWARD_TOKEN_ABI,
+        provider
+      );
+      const raw = await token.balanceOf(address);
+      setTrtBalance(ethers.formatEther(raw));
+    } catch {
+      setTrtBalance(null);
+    }
   }, [address]);
 
   useEffect(() => {
@@ -173,6 +203,7 @@ export default function App() {
     } else {
       setBackendBalance(null);
       setChainBalance(null);
+      setTrtBalance(null);
       setNotifications([]);
     }
   }, [address, fetchBalance, fetchNotifications, fetchChainBalance]);
@@ -372,6 +403,9 @@ export default function App() {
             {chainBalance !== null ? (
               <span className="muted small"> · Chain: {chainBalance} ETH</span>
             ) : null}
+            {trtBalance !== null ? (
+              <span className="muted small"> · TRT: {trtBalance}</span>
+            ) : null}
           </p>
         )}
       </section>
@@ -472,8 +506,9 @@ export default function App() {
           </p>
         ) : liveEvents.length === 0 ? (
           <p className="muted">
-            Listening for TournamentCreated, PlayerRegistered,
-            PrizeDistributed, TournamentCancelled — new events appear here and
+            Listening for TournamentCreated, TokenTournamentCreated,
+            PlayerRegistered, PrizeDistributed, TokenPrizeDistributed,
+            TournamentCancelled — new events appear here and
             auto-refresh the lists.
           </p>
         ) : (

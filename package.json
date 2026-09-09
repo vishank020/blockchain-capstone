@@ -6,9 +6,9 @@
   "main": "hardhat.config.ts",
   "scripts": {
     "compile": "hardhat compile",
-    "test:contracts": "node --test tests/tournament.test.js",
+    "test:contracts": "node --test tests/tournament.test.js tests/reward-token.test.js",
     "test:backend": "node --test backend/test/server.test.js",
-    "test": "node --test tests/tournament.test.js backend/test/server.test.js",
+    "test": "node --test tests/tournament.test.js tests/reward-token.test.js backend/test/server.test.js",
     "deploy": "node scripts/deploy_tournament.js",
     "start:backend": "node backend/server.js"
   },
