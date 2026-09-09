@@ -36,6 +36,8 @@ export default function App() {
   const [balanceLoading, setBalanceLoading] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [claimingId, setClaimingId] = useState(null);
+  const [liveEvents, setLiveEvents] = useState([]);
+  const [liveConnected, setLiveConnected] = useState(false);
 
   const fetchHealth = useCallback(async () => {
     try {
@@ -66,6 +68,60 @@ export default function App() {
     fetchHealth();
     fetchTournaments();
   }, [fetchHealth, fetchTournaments]);
+
+  // Live contract-event subscription: auto-refreshes on-chain activity.
+  useEffect(() => {
+    if (!window.ethereum) {
+      setLiveConnected(false);
+      return undefined;
+    }
+    let contract = null;
+    let cancelled = false;
+    const pushEvent = (type, message) => {
+      setLiveEvents((prev) =>
+        [{ type, message, time: new Date().toLocaleTimeString() }, ...prev].slice(0, 10)
+      );
+    };
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+      contract.on("TournamentCreated", (tournamentId, title) => {
+        if (cancelled) return;
+        pushEvent("TournamentCreated", `#${tournamentId.toString()} ${title}`);
+        fetchTournaments();
+      });
+      contract.on("PlayerRegistered", (tournamentId, player) => {
+        if (cancelled) return;
+        pushEvent(
+          "PlayerRegistered",
+          `#${tournamentId.toString()} ${player.slice(0, 6)}...`
+        );
+        fetchTournaments();
+      });
+      contract.on("PrizeDistributed", (tournamentId, winner, amount) => {
+        if (cancelled) return;
+        pushEvent(
+          "PrizeDistributed",
+          `#${tournamentId.toString()} ${ethers.formatEther(amount)} ETH`
+        );
+        fetchTournaments();
+        if (address) fetchNotifications(address);
+      });
+      contract.on("TournamentCancelled", (tournamentId) => {
+        if (cancelled) return;
+        pushEvent("TournamentCancelled", `#${tournamentId.toString()}`);
+        fetchTournaments();
+      });
+      setLiveConnected(true);
+    } catch {
+      setLiveConnected(false);
+    }
+    return () => {
+      cancelled = true;
+      if (contract) contract.removeAllListeners();
+      setLiveConnected(false);
+    };
+  }, [fetchTournaments, fetchNotifications, address]);
 
   const fetchBalance = useCallback(async (walletAddress) => {
     if (!walletAddress) return;
@@ -395,6 +451,43 @@ export default function App() {
               </ul>
             )}
           </>
+        )}
+      </section>
+
+      <section className="card">
+        <div className="row row-spread">
+          <h2>
+            Live events{" "}
+            <span
+              className={liveConnected ? "pill pill-connected" : "pill"}
+            >
+              {liveConnected ? "Listening" : "Not connected"}
+            </span>
+          </h2>
+        </div>
+        {!window.ethereum ? (
+          <p className="muted">
+            Install MetaMask to receive live contract events. The list below
+            still refreshes via the Refresh buttons.
+          </p>
+        ) : liveEvents.length === 0 ? (
+          <p className="muted">
+            Listening for TournamentCreated, PlayerRegistered,
+            PrizeDistributed, TournamentCancelled — new events appear here and
+            auto-refresh the lists.
+          </p>
+        ) : (
+          <ul className="tournament-list">
+            {liveEvents.map((event, index) => (
+              <li key={`${event.time}-${index}`} className="tournament-item">
+                <div>
+                  <strong>{event.type}</strong>
+                  <div className="muted small">{event.message}</div>
+                </div>
+                <span className="muted small">{event.time}</span>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 

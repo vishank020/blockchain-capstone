@@ -13,7 +13,7 @@
 ### Frontend Integration — MVP done
 - [x] Connect React components to Smart Contracts ABI — local `frontend/src/TournamentContract.json` + `config.js`
 - [x] Implement Web3 provider integration — ethers v6 `BrowserProvider`, `totalTournaments()` read
-- [ ] Handle contract events for real-time updates
+- [x] Handle contract events for real-time updates — live listener with auto-refresh + event feed
 - [x] State management for token/wallet connections — address/status state, no reload
 - [x] Responsive design for mobile/desktop — plain CSS with 640px breakpoint
 
