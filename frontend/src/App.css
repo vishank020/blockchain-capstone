@@ -367,6 +367,49 @@
   color: var(--danger);
 }
 
+/* ---------- create-tournament form ---------- */
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.field-wide {
+  grid-column: 1 / -1;
+}
+
+.field span {
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.field input {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #3a4666;
+  background: #10162a;
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.field input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.25);
+}
+
 /* ---------- text, code, helpers ---------- */
 
 .muted {
@@ -404,6 +447,10 @@ code {
   }
 
   .stats {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid {
     grid-template-columns: 1fr;
   }
 

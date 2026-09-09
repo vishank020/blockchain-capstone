@@ -73,6 +73,13 @@ export default function App() {
   const [liveEvents, setLiveEvents] = useState([]);
   const [liveConnected, setLiveConnected] = useState(false);
   const [hasProvider, setHasProvider] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newTournament, setNewTournament] = useState({
+    title: "",
+    prizePool: "1.0",
+    entryFee: "0.05",
+    maxPlayers: "8",
+  });
 
   const fetchHealth = useCallback(async () => {
     try {
@@ -321,6 +328,47 @@ export default function App() {
         )
       )
     : [];
+
+  const createTournament = async (event) => {
+    event.preventDefault();
+    if (!address) {
+      setStatus("Please connect wallet first");
+      return;
+    }
+    const maxPlayers = parseInt(newTournament.maxPlayers, 10);
+    if (!newTournament.title.trim()) {
+      setStatus("Creation failed: title is required");
+      return;
+    }
+    if (!Number.isInteger(maxPlayers) || maxPlayers < 2) {
+      setStatus("Creation failed: max players must be at least 2");
+      return;
+    }
+    setCreating(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/tournaments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newTournament.title.trim(),
+          prizePool: newTournament.prizePool || "0.0",
+          entryFee: newTournament.entryFee || "0.0",
+          maxPlayers,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+      setStatus(`Tournament #${data.tournament.id} created successfully`);
+      setNewTournament({ title: "", prizePool: "1.0", entryFee: "0.05", maxPlayers: "8" });
+      await fetchTournaments();
+    } catch (error) {
+      setStatus(`Creation failed: ${getErrorMessage(error)}`);
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const joinTournament = async (tournament) => {
     if (!address) {
@@ -600,6 +648,71 @@ export default function App() {
               </li>
             ))}
           </ul>
+        )}
+      </section>
+
+      <section className="card">
+        <div className="row row-spread">
+          <h2>Create tournament</h2>
+        </div>
+        {!address ? (
+          <p className="muted">Connect wallet to create a tournament.</p>
+        ) : (
+          <form className="form-grid" onSubmit={createTournament}>
+            <label className="field field-wide">
+              <span>Title</span>
+              <input
+                type="text"
+                placeholder="Campus Cup"
+                value={newTournament.title}
+                onChange={(e) =>
+                  setNewTournament({ ...newTournament, title: e.target.value })
+                }
+              />
+            </label>
+            <label className="field">
+              <span>Prize pool (ETH)</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={newTournament.prizePool}
+                onChange={(e) =>
+                  setNewTournament({ ...newTournament, prizePool: e.target.value })
+                }
+              />
+            </label>
+            <label className="field">
+              <span>Entry fee (ETH)</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={newTournament.entryFee}
+                onChange={(e) =>
+                  setNewTournament({ ...newTournament, entryFee: e.target.value })
+                }
+              />
+            </label>
+            <label className="field">
+              <span>Max players</span>
+              <input
+                type="number"
+                min="2"
+                value={newTournament.maxPlayers}
+                onChange={(e) =>
+                  setNewTournament({ ...newTournament, maxPlayers: e.target.value })
+                }
+              />
+            </label>
+            <div className="field field-wide">
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={creating}
+              >
+                {creating ? "Creating..." : "Create tournament"}
+              </button>
+            </div>
+          </form>
         )}
       </section>
 

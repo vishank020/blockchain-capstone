@@ -70,8 +70,10 @@ describe("Frontend smoke tests (no browser needed)", () => {
     const app = read(path.join(srcDir, "App.jsx"));
     for (const marker of [
       "Connect Wallet",
-      "BrowserProvider", // ethers v6 API (not v5 Web3Provider)
+      "BrowserProvider", // ethers v6 API
       "/api/tournaments",
+      "Create tournament",
+      "maxPlayers",
       "/api/balance/",
       "/api/notifications/",
       "distribute-prize",
