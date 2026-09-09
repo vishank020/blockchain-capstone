@@ -93,6 +93,23 @@ describe("Frontend smoke tests (no browser needed)", () => {
     );
   });
 
+  it("App declares callbacks before the live-events effect (no TDZ crash)", () => {
+    const app = read(path.join(srcDir, "App.jsx"));
+    const declared = (name) => {
+      const i = app.indexOf(`const ${name} = useCallback`);
+      assert.ok(i >= 0, `${name} is declared with useCallback`);
+      return i;
+    };
+    const effectAt = app.indexOf("Live contract-event subscription");
+    assert.ok(effectAt >= 0, "live-events effect exists");
+    for (const name of ["fetchNotifications", "fetchChainBalance", "fetchTournaments"]) {
+      assert.ok(
+        declared(name) < effectAt,
+        `${name} must be declared before the live-events effect`
+      );
+    }
+  });
+
   it(".env.example documents required env vars", () => {
     const envPath = path.join(rootDir, ".env.example");
     assert.ok(existsSync(envPath), "frontend/.env.example exists");
