@@ -37,6 +37,11 @@
   font-size: 18px;
 }
 
+.subheading {
+  margin: 14px 0 6px;
+  font-size: 15px;
+}
+
 .row {
   display: flex;
   align-items: center;

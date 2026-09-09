@@ -6,8 +6,8 @@
 - [x] Player dashboard interface — MVP tournament list in `frontend/src/App.jsx`
 - [x] Tournament creation/joining flow — join flow via backend API; creation still direct-contract only
 - [x] Wallet connection (MetaMask/WalletConnect) — MetaMask via ethers v6 `BrowserProvider`
-- [ ] Token balance display & management
-- [ ] Reward claiming interface
+- [x] Token balance display & management — backend + on-chain ETH balance in Wallet card
+- [x] Reward claiming interface — claim-prize + notifications in Rewards card
 - [x] Tournament dashboard with live data — list + refresh from `GET /api/tournaments`
 
 ### Frontend Integration — MVP done

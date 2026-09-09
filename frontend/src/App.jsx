@@ -31,6 +31,11 @@ export default function App() {
   const [tournamentsLoading, setTournamentsLoading] = useState(false);
   const [joiningId, setJoiningId] = useState(null);
   const [onChainCount, setOnChainCount] = useState(null);
+  const [backendBalance, setBackendBalance] = useState(null);
+  const [chainBalance, setChainBalance] = useState(null);
+  const [balanceLoading, setBalanceLoading] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [claimingId, setClaimingId] = useState(null);
 
   const fetchHealth = useCallback(async () => {
     try {
@@ -61,6 +66,60 @@ export default function App() {
     fetchHealth();
     fetchTournaments();
   }, [fetchHealth, fetchTournaments]);
+
+  const fetchBalance = useCallback(async (walletAddress) => {
+    if (!walletAddress) return;
+    setBalanceLoading(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/balance/${walletAddress}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setBackendBalance(await res.json());
+    } catch (error) {
+      setBackendBalance({ error: getErrorMessage(error) });
+    } finally {
+      setBalanceLoading(false);
+    }
+  }, []);
+
+  const fetchNotifications = useCallback(async (walletAddress) => {
+    if (!walletAddress) {
+      setNotifications([]);
+      return;
+    }
+    try {
+      const res = await fetch(
+        `${BACKEND_URL}/api/notifications/${walletAddress}`
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setNotifications(data.notifications || []);
+    } catch {
+      setNotifications([]);
+    }
+  }, []);
+
+  const fetchChainBalance = useCallback(async () => {
+    if (!window.ethereum || !address) return;
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const wei = await provider.getBalance(address);
+      setChainBalance(ethers.formatEther(wei));
+    } catch {
+      setChainBalance(null);
+    }
+  }, [address]);
+
+  useEffect(() => {
+    if (address) {
+      fetchBalance(address);
+      fetchNotifications(address);
+      fetchChainBalance();
+    } else {
+      setBackendBalance(null);
+      setChainBalance(null);
+      setNotifications([]);
+    }
+  }, [address, fetchBalance, fetchNotifications, fetchChainBalance]);
 
   const connectWallet = async () => {
     if (!window.ethereum) {
@@ -101,6 +160,44 @@ export default function App() {
       setStatus(`On-chain read failed: ${getErrorMessage(error)}`);
     }
   };
+
+  const claimPrize = async (tournament) => {
+    if (!address) {
+      setStatus("Please connect wallet first");
+      return;
+    }
+    setClaimingId(tournament.id);
+    try {
+      const res = await fetch(
+        `${BACKEND_URL}/api/tournaments/${tournament.id}/distribute-prize`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ winnerAddress: address }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+      setStatus(`Prize claimed for tournament #${tournament.id}`);
+      await fetchTournaments();
+      await fetchNotifications(address);
+    } catch (error) {
+      // Backend rejects non-participants and already-distributed prizes
+      setStatus(`Claim failed: ${getErrorMessage(error)}`);
+    } finally {
+      setClaimingId(null);
+    }
+  };
+
+  const myTournaments = address
+    ? tournaments.filter((t) =>
+        (t.players || []).some(
+          (p) => p.toLowerCase() === address.toLowerCase()
+        )
+      )
+    : [];
 
   const joinTournament = async (tournament) => {
     if (!address) {
@@ -187,6 +284,118 @@ export default function App() {
         <p className="muted small">
           Contract: <code>{CONTRACT_ADDRESS}</code>
         </p>
+      </section>
+
+      <section className="card">
+        <div className="row row-spread">
+          <h2>Wallet</h2>
+          {address ? (
+            <button
+              className="btn"
+              onClick={() => {
+                fetchBalance(address);
+                fetchChainBalance();
+              }}
+              disabled={balanceLoading}
+            >
+              {balanceLoading ? "Loading..." : "Refresh balance"}
+            </button>
+          ) : null}
+        </div>
+        {!address ? (
+          <p className="muted">Connect wallet to see balances.</p>
+        ) : backendBalance?.error ? (
+          <p className="bad">Balance error: {backendBalance.error}</p>
+        ) : (
+          <p>
+            Backend:{" "}
+            <strong>{backendBalance?.formattedBalance || "..."}</strong>{" "}
+            <span className="muted small">
+              ({backendBalance?.network || "Hardhat Local"})
+            </span>
+            {chainBalance !== null ? (
+              <span className="muted small"> · Chain: {chainBalance} ETH</span>
+            ) : null}
+          </p>
+        )}
+      </section>
+
+      <section className="card">
+        <div className="row row-spread">
+          <h2>Rewards</h2>
+          {address ? (
+            <button className="btn" onClick={() => fetchNotifications(address)}>
+              Refresh rewards
+            </button>
+          ) : null}
+        </div>
+        {!address ? (
+          <p className="muted">Connect wallet to see your tournaments and rewards.</p>
+        ) : (
+          <>
+            <h3 className="subheading">
+              My tournaments ({myTournaments.length})
+            </h3>
+            {myTournaments.length === 0 ? (
+              <p className="muted">You have not joined any tournament yet.</p>
+            ) : (
+              <ul className="tournament-list">
+                {myTournaments.map((tournament) => (
+                  <li key={tournament.id} className="tournament-item">
+                    <div>
+                      <strong>
+                        #{tournament.id} {tournament.title}
+                      </strong>
+                      <div className="muted small">
+                        {formatStatus(tournament.status)} · Prize{" "}
+                        {tournament.prizePool}
+                        {tournament.prizeDistributed ? " · Distributed" : ""}
+                        {tournament.winner ? ` · Winner ${tournament.winner.slice(0, 6)}...` : ""}
+                      </div>
+                    </div>
+                    <button
+                      className="btn btn-primary"
+                      disabled={
+                        claimingId === tournament.id ||
+                        tournament.prizeDistributed
+                      }
+                      title={
+                        tournament.prizeDistributed
+                          ? "Prize already distributed"
+                          : "Claim prize via backend API"
+                      }
+                      onClick={() => claimPrize(tournament)}
+                    >
+                      {claimingId === tournament.id
+                        ? "Claiming..."
+                        : tournament.prizeDistributed
+                          ? "Claimed"
+                          : "Claim prize"}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <h3 className="subheading">
+              Notifications ({notifications.length})
+            </h3>
+            {notifications.length === 0 ? (
+              <p className="muted">No reward notifications yet.</p>
+            ) : (
+              <ul className="tournament-list">
+                {notifications.map((notif) => (
+                  <li key={notif.id} className="tournament-item">
+                    <div>
+                      <strong>{notif.prizeAmount}</strong>
+                      <div className="muted small">{notif.message}</div>
+                    </div>
+                    <span className="pill pill-connected">{notif.status}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
       </section>
 
       <section className="card">
