@@ -1,20 +1,36 @@
 {
-  "name": "blockchain-capstone",
+  "name": "blockchain-capstone-contracts",
   "version": "1.0.0",
-  "description": "Decentralized platform for esports tournament rewards and digital token distribution enabling transparent prize distribution to players using blockchain technology.",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs",
-    "test": "tests"
-  },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "description": "Smart contracts and backend services for decentralized esports tournament reward system",
   "type": "module",
+  "main": "hardhat.config.ts",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test:contracts": "node --test tests/tournament.test.js",
+    "test:backend": "node --test backend/test/server.test.js",
+    "test": "node --test tests/tournament.test.js backend/test/server.test.js",
+    "deploy": "node scripts/deploy_tournament.js",
+    "start:backend": "node backend/server.js"
+  },
+  "keywords": [
+    "solidity",
+    "ethereum",
+    "hardhat",
+    "esports",
+    "tournaments",
+    "web3"
+  ],
+  "author": "Vishank",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0"
+  },
   "devDependencies": {
-    "hardhat": "^3.14.0"
+    "hardhat": "^3.14.0",
+    "tsx": "^4.7.0"
   }
 }
