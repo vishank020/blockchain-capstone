@@ -140,6 +140,31 @@ function sendRewardNotification(recipientAddress, tournamentId, prizeAmount) {
 
 // --- API Endpoints ---
 
+// API index
+app.get("/", (req, res) => {
+  res.json({
+    service: "Blockchain Tournament Backend API",
+    health: "/health",
+    docs: "See docs/USER_GUIDE.md, docs/DEVELOPER_GUIDE.md, docs/DEPLOYMENT.md",
+    endpoints: [
+      "GET /health",
+      "GET /api/token",
+      "POST /api/auth/login",
+      "GET /api/tournaments",
+      "POST /api/tournaments",
+      "GET /api/tournaments/:id",
+      "POST /api/tournaments/:id/join",
+      "POST /api/tournaments/:id/distribute-prize",
+      "POST /api/players/register",
+      "GET /api/notifications/:address",
+      "POST /api/oracle/verify-match",
+      "POST /api/ipfs/upload",
+      "GET /api/ipfs/:hash",
+      "GET /api/balance/:address",
+    ],
+  });
+});
+
 // Health Check
 app.get("/health", (req, res) => {
   res.json({

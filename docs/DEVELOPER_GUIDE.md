@@ -17,7 +17,7 @@ npx hardhat node       # http://127.0.0.1:8545, Chain ID 31337
 # terminal 2 — contracts + backend (repo root)
 npm install
 npm run compile
-npm test            # 21/21 expected (9 backend + 7 tournament-ABI + 5 token)
+npm test            # 22/22 expected (10 backend + 7 tournament-ABI + 5 token)
 npm run deploy      # exports deployments/hardhat-local_deployment.json (metadata only)
 npm run start:backend   # Express on http://localhost:4000
 
@@ -45,3 +45,4 @@ Backend alternatives from inside `backend/`: `npm start` (run), `npm run dev` (w
 - No new CSS framework without team agreement; keep 640px responsive breakpoint.
 - Frontend tests: `npm test` in `frontend/` runs `test/smoke.test.js` (`node:test`, no browser). Rebuild (`npm run build`) before testing since one test asserts `dist/index.html` exists.
 - After changing any contract: `npm run compile` → re-copy both ABIs into `frontend/src/` → `npm test` (root) → `npm run build` + `npm test` (frontend).
+

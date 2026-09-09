@@ -39,7 +39,7 @@
 
 - [x] **Solidity contracts**: [`contracts/TournamentContract.sol`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/contracts/TournamentContract.sol)
 - [x] **Migration & deployment scripts**: [`scripts/deploy_tournament.js`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/scripts/deploy_tournament.js)
-- [x] **Test suites**: [`tests/tournament.test.js`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/tests/tournament.test.js), [`tests/reward-token.test.js`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/tests/reward-token.test.js) & [`backend/test/server.test.js`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/backend/test/server.test.js) (21/21 tests passing)
+- [x] **Test suites**: [`tests/tournament.test.js`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/tests/tournament.test.js), [`tests/reward-token.test.js`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/tests/reward-token.test.js) & [`backend/test/server.test.js`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/backend/test/server.test.js) (22/22 tests passing)
 - [x] **Backend API**: [`backend/server.js`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/backend/server.js)
 - [x] **Compiled Artifacts**: [`artifacts/contracts/TournamentContract.sol/TournamentContract.json`](file:///c:/Users/singh/OneDrive/Desktop/blockchain_capstone/blockchain-capstone/artifacts/contracts/TournamentContract.sol/TournamentContract.json)
 
@@ -66,6 +66,7 @@
     - `RewardTokenUpdated(address indexed previousToken, address indexed newToken)`
 
 4. **Backend API Endpoints (Port 4000)**:
+    - `GET /` - API index (service info + endpoint list)
     - `GET /health` - Health check
     - `POST /api/auth/login` - Authenticate wallet address & retrieve JWT
     - `GET /api/tournaments` - List all tournaments
@@ -89,7 +90,7 @@
 # 1. Compile smart contracts
 npm run compile
 
-# 2. Run Contract, Token, and Backend test suites (21 tests)
+# 2. Run Contract, Token, and Backend test suites (22 tests)
 npm test
 
 # 3. Deploy contract locally

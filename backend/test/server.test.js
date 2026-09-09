@@ -21,12 +21,20 @@ describe("Backend API Full Integration Test Suite", () => {
   after(async () => {
     await new Promise((resolve) => server.close(resolve));
   });
-
   it("1. Health check should return status healthy", async () => {
     const res = await fetch(`${baseUrl}/health`);
     const data = await res.json();
     assert.equal(res.status, 200);
     assert.equal(data.status, "healthy");
+  });
+
+  it("1b. API index should list available endpoints", async () => {
+    const res = await fetch(`${baseUrl}/`);
+    const data = await res.json();
+    assert.equal(res.status, 200);
+    assert.ok(Array.isArray(data.endpoints));
+    assert.ok(data.endpoints.includes("GET /health"));
+    assert.ok(data.endpoints.includes("GET /api/token"));
   });
 
   it("2. Auth login should generate valid JWT token", async () => {

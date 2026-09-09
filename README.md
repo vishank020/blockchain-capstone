@@ -42,7 +42,7 @@ Decentralized platform for esports tournament rewards and digital token distribu
 - Interface with backend API
 
 ### 3. Merge Process
-1. Contracts compiled and tested (`npm run compile`, `npm test` → 21/21)
+1. Contracts compiled and tested (`npm run compile`, `npm test` → 22/22)
 2. Frontend updated with contract addresses/ABIs
 3. Both test integration: frontend calls contract events
 4. Merge to `master` branch after successful testing
@@ -78,7 +78,7 @@ Leave running. Verified: `eth_chainId` returns `0x7a69` (31337) with funded test
 ### 2. Contracts: compile, test, export metadata (terminal 2, repo root)
 ```bash
 npm run compile   # compiles TournamentContract + RewardToken (solc 0.8.24)
-npm test          # 21/21 expected (9 backend + 7 tournament-ABI + 5 token)
+npm test          # 22/22 expected (10 backend + 7 tournament-ABI + 5 token)
 npm run deploy    # exports deployments/hardhat-local_deployment.json (metadata only, not an on-chain deploy)
 ```
 
