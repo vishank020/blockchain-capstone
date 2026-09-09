@@ -8,7 +8,7 @@
 2. Add the Hardhat local network (ask the dev team for the RPC URL if it changed):
    - Network: Hardhat Local, RPC `http://127.0.0.1:8545`, Chain ID `31337`, Currency `ETH`.
 3. Import a test account private key from the local node if you need funds (never use real keys).
-4. Start the backend (`npm run start:backend` in the repo root) and the frontend (`npm run dev` in `frontend/`).
+4. Start all three, in order: chain (`npx hardhat node` in the repo root), backend (`npm run start:backend` in the repo root), frontend (`npm run dev` in `frontend/`).
 5. Open the frontend URL (default `http://localhost:5173`).
 
 ## Walkthrough

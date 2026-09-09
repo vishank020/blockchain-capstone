@@ -75,27 +75,42 @@ Out of scope for this build (documented honestly): real IPFS pinning and oracle 
 - Git
 - MetaMask browser extension
 
-#### Frontend Setup
+#### Setup (verified against the repo tree and scripts)
+
+#### 0. Install (once, repo root)
 ```bash
-cd frontend
-npm install
-cp .env.example .env   # VITE_BACKEND_URL, VITE_CONTRACT_ADDRESS, VITE_REWARD_TOKEN_ADDRESS
-npm run dev
+npm install            # root + backend + contract tooling
+cd frontend && npm install && cd ..
 ```
 
-#### Backend & Contracts (repo root)
+#### 1. Local chain (terminal 1, repo root)
 ```bash
-npm install
-npm run compile   # TournamentContract + RewardToken
-npm test          # 21/21 expected
-npm run deploy    # writes deployments/hardhat-local_deployment.json
+npx hardhat node       # http://127.0.0.1:8545, Chain ID 31337 (eth_chainId → 0x7a69)
+```
+
+#### 2. Contracts: compile, test, export metadata (terminal 2, repo root)
+```bash
+npm run compile   # TournamentContract + RewardToken, solc 0.8.24
+npm test          # 21/21 expected (9 backend + 7 tournament-ABI + 5 token)
+npm run deploy    # exports deployments/hardhat-local_deployment.json (metadata only)
+```
+
+#### 3. Backend (terminal 2 continued, repo root)
+```bash
 npm run start:backend   # Express API on http://localhost:4000
+```
+
+#### 4. Frontend (terminal 3)
+```bash
+cd frontend
+cp .env.example .env   # VITE_BACKEND_URL, VITE_CONTRACT_ADDRESS, VITE_REWARD_TOKEN_ADDRESS
+npm run dev            # default http://localhost:5173
 ```
 
 #### Integration
 1. Get contract + token addresses from `deployments/hardhat-local_deployment.json`
 2. Update frontend `.env` with both addresses
-3. Start both frontend and backend
+3. With chain + backend + frontend running, connect MetaMask (Chain ID 31337)
 4. Test tournament creation, token distribution, and reward claiming
 
 ### Merge Guidelines

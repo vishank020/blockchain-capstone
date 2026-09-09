@@ -61,19 +61,37 @@ Decentralized platform for esports tournament rewards and digital token distribu
 - Git
 - MetaMask browser extension
 
-### Backend & Contracts (repo root)
+### 0. Install (once, repo root)
 ```bash
-npm install
-npm run compile   # compile TournamentContract + RewardToken
-npm test          # 21/21 expected
-npm run deploy    # writes deployments/hardhat-local_deployment.json
-npm run start:backend   # Express API on http://localhost:4000
+npm install            # installs root + backend + contract tooling
+cd frontend
+npm install            # frontend deps (ethers v6, React, Vite)
+cd ..
 ```
 
-### Frontend
+### 1. Local chain (terminal 1, repo root)
+```bash
+npx hardhat node       # JSON-RPC at http://127.0.0.1:8545, Chain ID 31337
+```
+Leave running. Verified: `eth_chainId` returns `0x7a69` (31337) with funded test accounts.
+
+### 2. Contracts: compile, test, export metadata (terminal 2, repo root)
+```bash
+npm run compile   # compiles TournamentContract + RewardToken (solc 0.8.24)
+npm test          # 21/21 expected (9 backend + 7 tournament-ABI + 5 token)
+npm run deploy    # exports deployments/hardhat-local_deployment.json (metadata only, not an on-chain deploy)
+```
+
+### 3. Backend (terminal 2 continued, repo root)
+```bash
+npm run start:backend   # Express API on http://localhost:4000
+curl http://localhost:4000/health   # expect {"status":"healthy",...}
+```
+Alternative from inside `backend/`: `npm start` (run), `npm run dev` (watch), `npm test` (9/9).
+
+### 4. Frontend (terminal 3)
 ```bash
 cd frontend
-npm install
 cp .env.example .env   # set VITE_BACKEND_URL, VITE_CONTRACT_ADDRESS, VITE_REWARD_TOKEN_ADDRESS
 npm run dev            # default http://localhost:5173
 ```
@@ -81,8 +99,8 @@ npm run dev            # default http://localhost:5173
 ### Integration
 1. Get contract + token addresses from `deployments/hardhat-local_deployment.json`
 2. Update frontend `.env` with both addresses
-3. Start both frontend and backend
-4. Test tournament creation, token distribution, and reward claiming (see `docs/USER_GUIDE.md`)
+3. With chain + backend + frontend all running, connect MetaMask (Chain ID 31337)
+4. Test tournament listing, joining, prize claiming, and the live event feed (see `docs/USER_GUIDE.md`)
 
 ## Merge Guidelines
 - No breaking changes to contract ABI without consensus

@@ -9,21 +9,25 @@
   - `TournamentContract.json` + `RewardToken.json` — bundled ABI copies. Re-copy both after every `npm run compile`.
   - `App.jsx` — wallet, backend health, wallet balances, rewards, live events, tournaments, status bar.
 
-## Local setup
+## Local setup (3 terminals, repo tree: `contracts/`, `backend/`, `frontend/`, `scripts/`, `tests/`, `deployments/`)
 ```bash
-# root: contracts + backend
+# terminal 1 — local chain (repo root; leave running)
+npx hardhat node       # http://127.0.0.1:8545, Chain ID 31337
+
+# terminal 2 — contracts + backend (repo root)
 npm install
 npm run compile
 npm test            # 21/21 expected (9 backend + 7 tournament-ABI + 5 token)
-npm run deploy      # local Hardhat network
-npm run start:backend
+npm run deploy      # exports deployments/hardhat-local_deployment.json (metadata only)
+npm run start:backend   # Express on http://localhost:4000
 
-# frontend (second terminal)
+# terminal 3 — frontend
 cd frontend
 npm install
 cp .env.example .env   # adjust VITE_BACKEND_URL / VITE_CONTRACT_ADDRESS / VITE_REWARD_TOKEN_ADDRESS
 npm run dev            # default http://localhost:5173
 ```
+Backend alternatives from inside `backend/`: `npm start` (run), `npm run dev` (watch), `npm test` (9/9). Root install already provides its deps.
 
 ## Key integration points
 | Concern | Details |
