@@ -143,13 +143,12 @@ export default function App() {
       const net = await provider.getNetwork();
       setCurrentChainId(Number(net.chainId));
 
-      // Choose provider for balance reading:
-      // If MetaMask is on Hardhat Local (31337), read through it.
-      // Otherwise, read through local RPC fallback so balances still display.
-      const readProvider =
-        net.chainId === 31337n
-          ? provider
-          : new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+      let readProvider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+      try {
+        await readProvider.getBlockNumber();
+      } catch {
+        readProvider = provider;
+      }
 
       const wei = await readProvider.getBalance(address);
       setChainBalance(ethers.formatEther(wei));
@@ -169,7 +168,8 @@ export default function App() {
       );
       const isReg = await tourContract.registeredPlayers(address);
       setIsGloballyRegistered(Boolean(isReg));
-    } catch {
+    } catch (err) {
+      console.warn("fetchChainBalance error:", err);
       setChainBalance(null);
       setTrtBalance(null);
       setIsGloballyRegistered(false);

@@ -1,4 +1,12 @@
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
 import dotenv from "dotenv";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.resolve(__dirname, ".env") });
 dotenv.config();
 
 import express from "express";
@@ -6,13 +14,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import crypto from "crypto";
-import path from "path";
-import fs from "fs";
-import { fileURLToPath } from "url";
 import { ethers } from "ethers";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 function getDeploymentInfo() {
   const depPath = path.resolve(__dirname, "../deployments/hardhat-local_deployment.json");
