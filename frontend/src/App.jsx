@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { ethers } from "ethers";
-import { BACKEND_URL, CONTRACT_ABI, CONTRACT_ADDRESS, REWARD_TOKEN_ABI, REWARD_TOKEN_ADDRESS } from "./config.js";
+import {
+  BACKEND_URL,
+  CONTRACT_ABI,
+  CONTRACT_ADDRESS,
+  REWARD_TOKEN_ABI,
+  REWARD_TOKEN_ADDRESS,
+} from "./config.js";
 import "./App.css";
 
 const STATUS_LABELS = ["Open", "InProgress", "Completed", "Cancelled"];
@@ -73,13 +79,19 @@ export default function App() {
   const [liveEvents, setLiveEvents] = useState([]);
   const [liveConnected, setLiveConnected] = useState(false);
   const [hasProvider, setHasProvider] = useState(false);
+  const [currentChainId, setCurrentChainId] = useState(null);
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [faucetLoading, setFaucetLoading] = useState(false);
+  const [isGloballyRegistered, setIsGloballyRegistered] = useState(false);
+  const [registeringPlayer, setRegisteringPlayer] = useState(false);
+
   const [newTournament, setNewTournament] = useState({
     title: "",
     prizePool: "1.0",
     entryFee: "0.05",
-    maxPlayers: "8",
+    maxPlayers: "4",
+    currency: "ETH", // "ETH" or "TRT"
   });
 
   const fetchHealth = useCallback(async () => {
@@ -92,26 +104,6 @@ export default function App() {
       setBackendHealth({ status: "unreachable", error: getErrorMessage(error) });
     }
   }, []);
-
-  const fetchTournaments = useCallback(async () => {
-    setTournamentsLoading(true);
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/tournaments`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setTournaments(data.tournaments || []);
-    } catch (error) {
-      setStatus(`Failed to load tournaments: ${getErrorMessage(error)}`);
-    } finally {
-      setTournamentsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    setHasProvider(typeof window !== "undefined" && !!window.ethereum);
-    fetchHealth();
-    fetchTournaments();
-  }, [fetchHealth, fetchTournaments]);
 
   const fetchBalance = useCallback(async (walletAddress) => {
     if (!walletAddress) return;
@@ -148,24 +140,159 @@ export default function App() {
     if (!window.ethereum || !address) return;
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
-      const wei = await provider.getBalance(address);
+      const net = await provider.getNetwork();
+      setCurrentChainId(Number(net.chainId));
+
+      // Choose provider for balance reading:
+      // If MetaMask is on Hardhat Local (31337), read through it.
+      // Otherwise, read through local RPC fallback so balances still display.
+      const readProvider =
+        net.chainId === 31337n
+          ? provider
+          : new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+
+      const wei = await readProvider.getBalance(address);
       setChainBalance(ethers.formatEther(wei));
-    } catch {
-      setChainBalance(null);
-    }
-    try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
+
       const token = new ethers.Contract(
         REWARD_TOKEN_ADDRESS,
         REWARD_TOKEN_ABI,
-        provider
+        readProvider
       );
       const raw = await token.balanceOf(address);
       setTrtBalance(ethers.formatEther(raw));
+
+      const tourContract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        CONTRACT_ABI,
+        readProvider
+      );
+      const isReg = await tourContract.registeredPlayers(address);
+      setIsGloballyRegistered(Boolean(isReg));
     } catch {
+      setChainBalance(null);
       setTrtBalance(null);
+      setIsGloballyRegistered(false);
     }
   }, [address]);
+
+  const fetchTournaments = useCallback(async () => {
+    setTournamentsLoading(true);
+    try {
+      let combined = [];
+
+      // 1. Try on-chain read using MetaMask (if on 31337) or direct fallback RPC
+      let provider = null;
+      if (typeof window !== "undefined" && window.ethereum) {
+        try {
+          const bp = new ethers.BrowserProvider(window.ethereum);
+          const net = await bp.getNetwork();
+          if (net.chainId === 31337n) {
+            provider = bp;
+          }
+        } catch {
+          // Fall through
+        }
+      }
+      if (!provider) {
+        try {
+          provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+        } catch {
+          // Fall through
+        }
+      }
+
+      if (provider) {
+        try {
+          const contract = new ethers.Contract(
+            CONTRACT_ADDRESS,
+            CONTRACT_ABI,
+            provider
+          );
+          const total = await contract.totalTournaments();
+          const totalNum = Number(total);
+          setOnChainCount(total.toString());
+
+          const onChainList = [];
+          for (let i = 1; i <= totalNum; i++) {
+            try {
+              const t = await contract.getTournament(i);
+              const players = await contract.getTournamentPlayers(i);
+              const isToken = await contract.isTokenTournament(i);
+              const tokenPrize = isToken
+                ? await contract.tokenPrizePools(i)
+                : 0n;
+
+              onChainList.push({
+                id: Number(t[0]),
+                title: t[1],
+                ipfsMetadataHash: t[2],
+                prizePool: isToken
+                  ? `${ethers.formatEther(tokenPrize)} TRT`
+                  : `${ethers.formatEther(t[3])} ETH`,
+                entryFee: isToken
+                  ? `${ethers.formatEther(t[4])} TRT`
+                  : `${ethers.formatEther(t[4])} ETH`,
+                rawEntryFee: t[4],
+                rawPrizePool: isToken ? tokenPrize : t[3],
+                maxPlayers: Number(t[5]),
+                currentPlayers: Number(t[6]),
+                status: STATUS_LABELS[Number(t[7])] || "Open",
+                winner:
+                  t[8] === ethers.ZeroAddress || t[8] === null
+                    ? null
+                    : t[8],
+                prizeDistributed: t[9],
+                players: [...players],
+                isTokenTournament: isToken,
+                onChain: true,
+              });
+            } catch (err) {
+              console.warn(`Could not read on-chain tournament #${i}:`, err);
+            }
+          }
+          if (onChainList.length > 0) {
+            combined = onChainList;
+          }
+        } catch (chainErr) {
+          console.warn("On-chain fetch skipped:", chainErr);
+        }
+      }
+
+      // 2. Fetch backend tournaments mirror
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/tournaments`);
+        if (res.ok) {
+          const data = await res.json();
+          const backendList = data.tournaments || [];
+          if (combined.length === 0) {
+            combined = backendList;
+          } else {
+            // Append any backend-only mock tournaments
+            for (const bt of backendList) {
+              if (!combined.some((ct) => ct.id === bt.id)) {
+                combined.push(bt);
+              }
+            }
+          }
+        }
+      } catch {
+        // Backend offline, keep whatever we loaded
+      }
+
+      setTournaments(combined);
+    } catch (error) {
+      setStatus(`Failed to load tournaments: ${getErrorMessage(error)}`);
+    } finally {
+      setTournamentsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    setHasProvider(typeof window !== "undefined" && !!window.ethereum);
+    fetchHealth();
+    fetchTournaments();
+  }, [fetchHealth, fetchTournaments]);
 
   useEffect(() => {
     if (address) {
@@ -176,6 +303,7 @@ export default function App() {
       setBackendBalance(null);
       setChainBalance(null);
       setTrtBalance(null);
+      setCurrentChainId(null);
       setNotifications([]);
     }
   }, [address, fetchBalance, fetchNotifications, fetchChainBalance]);
@@ -191,7 +319,10 @@ export default function App() {
     let cancelled = false;
     const pushEvent = (type, message) => {
       setLiveEvents((prev) =>
-        [{ type, message, time: new Date().toLocaleTimeString() }, ...prev].slice(0, 10)
+        [
+          { type, message, time: new Date().toLocaleTimeString() },
+          ...prev,
+        ].slice(0, 10)
       );
     };
     try {
@@ -201,11 +332,16 @@ export default function App() {
         if (cancelled) return;
         pushEvent("TournamentCreated", `#${tournamentId.toString()} ${title}`);
         fetchTournaments();
+        fetchChainBalance();
       });
       contract.on("TokenTournamentCreated", (tournamentId, title) => {
         if (cancelled) return;
-        pushEvent("TokenTournamentCreated", `#${tournamentId.toString()} ${title} (TRT)`);
+        pushEvent(
+          "TokenTournamentCreated",
+          `#${tournamentId.toString()} ${title} (TRT)`
+        );
         fetchTournaments();
+        fetchChainBalance();
       });
       contract.on("PlayerRegistered", (tournamentId, player) => {
         if (cancelled) return;
@@ -214,6 +350,7 @@ export default function App() {
           `#${tournamentId.toString()} ${player.slice(0, 6)}...`
         );
         fetchTournaments();
+        fetchChainBalance();
       });
       contract.on("PrizeDistributed", (tournamentId, winner, amount) => {
         if (cancelled) return;
@@ -222,6 +359,7 @@ export default function App() {
           `#${tournamentId.toString()} ${ethers.formatEther(amount)} ETH`
         );
         fetchTournaments();
+        fetchChainBalance();
         if (address) fetchNotifications(address);
       });
       contract.on("TokenPrizeDistributed", (tournamentId, winner, amount) => {
@@ -252,6 +390,44 @@ export default function App() {
     };
   }, [fetchTournaments, fetchNotifications, fetchChainBalance, address]);
 
+  const switchToHardhatNetwork = async () => {
+    if (!window.ethereum) return;
+    try {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: "0x7a69" }], // 31337 in hex
+      });
+      setStatus("Switched to Hardhat Localhost (31337)");
+      await fetchChainBalance();
+    } catch (switchError) {
+      if (switchError.code === 4902) {
+        try {
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [
+              {
+                chainId: "0x7a69",
+                chainName: "Hardhat Localhost",
+                rpcUrls: ["http://127.0.0.1:8545"],
+                nativeCurrency: {
+                  name: "ETH",
+                  symbol: "ETH",
+                  decimals: 18,
+                },
+              },
+            ],
+          });
+          setStatus("Added and switched to Hardhat Localhost (31337)");
+          await fetchChainBalance();
+        } catch (addError) {
+          setStatus(`Failed to add network: ${getErrorMessage(addError)}`);
+        }
+      } else {
+        setStatus(`Failed to switch network: ${getErrorMessage(switchError)}`);
+      }
+    }
+  };
+
   const connectWallet = async () => {
     if (!window.ethereum) {
       setStatus("MetaMask not detected. Please install MetaMask.");
@@ -260,25 +436,104 @@ export default function App() {
     try {
       // ethers v6: BrowserProvider replaces the legacy v5 provider class
       const provider = new ethers.BrowserProvider(window.ethereum);
+      const net = await provider.getNetwork();
+      setCurrentChainId(Number(net.chainId));
+
       const accounts = await provider.send("eth_requestAccounts", []);
       setAddress(accounts[0] || null);
-      setStatus(
-        accounts.length > 0
-          ? `Wallet connected: ${accounts[0]}`
-          : "No accounts returned by wallet"
-      );
+
+      if (net.chainId !== 31337n) {
+        setStatus(
+          `Connected: ${accounts[0]?.slice(0, 6)}... (Note: MetaMask is on Chain ${net.chainId.toString()}. Switch to Hardhat 31337 for on-chain actions)`
+        );
+      } else {
+        setStatus(
+          accounts.length > 0
+            ? `Wallet connected: ${accounts[0]}`
+            : "No accounts returned by wallet"
+        );
+      }
     } catch (error) {
       setStatus(`Wallet connection failed: ${getErrorMessage(error)}`);
     }
   };
 
-  const readOnChainCount = async () => {
-    if (!window.ethereum) {
-      setStatus("MetaMask not detected. Please install MetaMask.");
+  const registerGlobalPlayer = async () => {
+    if (!address || !window.ethereum) {
+      setStatus("Please connect wallet first");
       return;
     }
+    setRegisteringPlayer(true);
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
+      const net = await provider.getNetwork();
+      if (net.chainId !== 31337n) {
+        await switchToHardhatNetwork();
+      }
+
+      setStatus("Registering player globally on-chain via MetaMask...");
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        CONTRACT_ABI,
+        signer
+      );
+      const tx = await contract.registerPlayer();
+      setStatus(`Registration transaction submitted (${tx.hash.slice(0, 10)}...). Waiting for confirmation...`);
+      await tx.wait();
+      setStatus("Player registered globally on-chain!");
+      setIsGloballyRegistered(true);
+    } catch (error) {
+      setStatus(`Registration failed: ${getErrorMessage(error)}`);
+    } finally {
+      setRegisteringPlayer(false);
+    }
+  };
+
+  const claimFaucet = async () => {
+    if (!address) {
+      setStatus("Please connect wallet first");
+      return;
+    }
+    setFaucetLoading(true);
+    try {
+      setStatus("Requesting 100 test TRT & gas ETH from faucet...");
+      const res = await fetch(`${BACKEND_URL}/api/faucet`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      setStatus(
+        `Faucet sent 100 TRT tokens and test ETH to ${address.slice(0, 6)}...`
+      );
+      await fetchChainBalance();
+    } catch (error) {
+      setStatus(`Faucet failed: ${getErrorMessage(error)}`);
+    } finally {
+      setFaucetLoading(false);
+    }
+  };
+
+  const readOnChainCount = async () => {
+    try {
+      let provider = null;
+      if (window.ethereum) {
+        try {
+          const bp = new ethers.BrowserProvider(window.ethereum);
+          const net = await bp.getNetwork();
+          if (net.chainId === 31337n) {
+            provider = bp;
+          }
+        } catch {
+          // Fall through
+        }
+      }
+      if (!provider) {
+        provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+      }
+
       const contract = new ethers.Contract(
         CONTRACT_ADDRESS,
         CONTRACT_ABI,
@@ -297,8 +552,58 @@ export default function App() {
       setStatus("Please connect wallet first");
       return;
     }
+
+    // Check if player has joined this tournament
+    const hasJoined = (tournament.players || []).some(
+      (p) => p.toLowerCase() === address.toLowerCase()
+    );
+    if (!hasJoined) {
+      setStatus(
+        `Cannot claim: Address ${address.slice(0, 6)}... has not joined Tournament #${tournament.id}. Click 'Join tournament' first!`
+      );
+      return;
+    }
+
     setClaimingId(tournament.id);
     try {
+      let onChainDone = false;
+
+      // 1. If caller is Admin/Oracle on-chain, prompt MetaMask directly
+      if (tournament.onChain && window.ethereum) {
+        try {
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const net = await provider.getNetwork();
+          if (net.chainId === 31337n) {
+            const signer = await provider.getSigner();
+            const contract = new ethers.Contract(
+              CONTRACT_ADDRESS,
+              CONTRACT_ABI,
+              signer
+            );
+            const adminAddr = await contract.admin();
+            if (adminAddr.toLowerCase() === address.toLowerCase()) {
+              setStatus(
+                `MetaMask: Distribute prize for #${tournament.id} as admin...`
+              );
+              let tx;
+              if (tournament.isTokenTournament) {
+                tx = await contract.distributeTokenPrize(tournament.id, address);
+              } else {
+                tx = await contract.distributePrize(tournament.id, address);
+              }
+              await tx.wait();
+              onChainDone = true;
+            }
+          }
+        } catch (metamaskErr) {
+          console.warn("Direct admin distribute skipped, using oracle relay:", metamaskErr);
+        }
+      }
+
+      // 2. Request backend oracle relay to attest and distribute payout
+      setStatus(
+        `Oracle Attestation: Claiming prize for Tournament #${tournament.id}...`
+      );
       const res = await fetch(
         `${BACKEND_URL}/api/tournaments/${tournament.id}/distribute-prize`,
         {
@@ -308,14 +613,17 @@ export default function App() {
         }
       );
       const data = await res.json();
-      if (!res.ok) {
+      if (!res.ok && !onChainDone) {
         throw new Error(data.error || `HTTP ${res.status}`);
       }
-      setStatus(`Prize claimed for tournament #${tournament.id}`);
+
+      setStatus(
+        `Prize claimed and distributed successfully for Tournament #${tournament.id}! Check your updated balance.`
+      );
       await fetchTournaments();
       await fetchNotifications(address);
+      await fetchChainBalance();
     } catch (error) {
-      // Backend rejects non-participants and already-distributed prizes
       setStatus(`Claim failed: ${getErrorMessage(error)}`);
     } finally {
       setClaimingId(null);
@@ -347,23 +655,93 @@ export default function App() {
     }
     setCreating(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/tournaments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: newTournament.title.trim(),
-          prizePool: newTournament.prizePool || "0.0",
-          entryFee: newTournament.entryFee || "0.0",
-          maxPlayers,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || `HTTP ${res.status}`);
+      const isTRT = newTournament.currency === "TRT";
+      const ipfsHash =
+        "Qm" +
+        Math.random().toString(36).substring(2, 15) +
+        Math.random().toString(36).substring(2, 15);
+
+      if (window.ethereum) {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const net = await provider.getNetwork();
+        if (net.chainId !== 31337n) {
+          await switchToHardhatNetwork();
+        }
+
+        setStatus(`Creating ${newTournament.currency} tournament on-chain via MetaMask...`);
+        const signer = await provider.getSigner();
+        const contract = new ethers.Contract(
+          CONTRACT_ADDRESS,
+          CONTRACT_ABI,
+          signer
+        );
+
+        if (isTRT) {
+          // Token Tournament: Approve TRT prize tokens, then create
+          const token = new ethers.Contract(
+            REWARD_TOKEN_ADDRESS,
+            REWARD_TOKEN_ABI,
+            signer
+          );
+          const prizeTokensWei = ethers.parseEther(newTournament.prizePool || "100");
+          const entryFeeTokensWei = ethers.parseEther(newTournament.entryFee || "10");
+
+          setStatus("MetaMask: Approve TRT tokens for tournament prize pool...");
+          const approveTx = await token.approve(CONTRACT_ADDRESS, prizeTokensWei);
+          await approveTx.wait();
+
+          setStatus("MetaMask: Create token tournament on-chain...");
+          const tx = await contract.createTokenTournament(
+            newTournament.title.trim(),
+            ipfsHash,
+            entryFeeTokensWei,
+            maxPlayers,
+            prizeTokensWei
+          );
+          await tx.wait();
+        } else {
+          // ETH Tournament
+          const prizePoolWei = ethers.parseEther(newTournament.prizePool || "0.5");
+          const entryFeeWei = ethers.parseEther(newTournament.entryFee || "0.05");
+
+          setStatus("MetaMask: Confirm on-chain tournament creation...");
+          const tx = await contract.createTournament(
+            newTournament.title.trim(),
+            ipfsHash,
+            entryFeeWei,
+            maxPlayers,
+            { value: prizePoolWei }
+          );
+          await tx.wait();
+        }
+        setStatus(`Tournament '${newTournament.title}' created on-chain!`);
       }
-      setStatus(`Tournament #${data.tournament.id} created successfully`);
-      setNewTournament({ title: "", prizePool: "1.0", entryFee: "0.05", maxPlayers: "8" });
+
+      // Sync backend mirror
+      try {
+        await fetch(`${BACKEND_URL}/api/tournaments`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: newTournament.title.trim(),
+            prizePool: newTournament.prizePool || "0.0",
+            entryFee: newTournament.entryFee || "0.0",
+            maxPlayers,
+          }),
+        });
+      } catch {
+        // Backend sync non-blocking
+      }
+
+      setNewTournament({
+        title: "",
+        prizePool: "1.0",
+        entryFee: "0.05",
+        maxPlayers: "4",
+        currency: "ETH",
+      });
       await fetchTournaments();
+      await fetchChainBalance();
     } catch (error) {
       setStatus(`Creation failed: ${getErrorMessage(error)}`);
     } finally {
@@ -378,18 +756,54 @@ export default function App() {
     }
     setDeletingId(tournament.id);
     try {
+      if (tournament.prizeDistributed) {
+        setStatus(
+          `Cannot delete: Tournament #${tournament.id} is Completed with prize distributed. It is permanently recorded on-chain for audit.`
+        );
+        return;
+      }
+
+      // If on-chain and caller is admin, cancel via MetaMask
+      let onChainDone = false;
+      if (tournament.onChain && window.ethereum) {
+        try {
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const net = await provider.getNetwork();
+          if (net.chainId === 31337n) {
+            const signer = await provider.getSigner();
+            const contract = new ethers.Contract(
+              CONTRACT_ADDRESS,
+              CONTRACT_ABI,
+              signer
+            );
+            const adminAddr = await contract.admin();
+            if (adminAddr.toLowerCase() === address.toLowerCase()) {
+              setStatus(
+                `MetaMask: Cancelling tournament #${tournament.id} on-chain...`
+              );
+              const tx = await contract.cancelTournament(tournament.id);
+              await tx.wait();
+              onChainDone = true;
+            }
+          }
+        } catch (metamaskErr) {
+          console.warn("Direct admin cancel skipped, using backend relay:", metamaskErr);
+        }
+      }
+
+      // Relay to backend to remove mirror and/or cancel on-chain
       const res = await fetch(
         `${BACKEND_URL}/api/tournaments/${tournament.id}`,
         { method: "DELETE" }
       );
       const data = await res.json();
-      if (!res.ok) {
+      if (!res.ok && !onChainDone) {
         throw new Error(data.error || `HTTP ${res.status}`);
       }
-      setStatus(`Tournament #${tournament.id} deleted`);
+      setStatus(`Tournament #${tournament.id} cancelled/deleted successfully.`);
       await fetchTournaments();
     } catch (error) {
-      setStatus(`Delete failed: ${getErrorMessage(error)}`);
+      setStatus(`Delete/Cancel failed: ${getErrorMessage(error)}`);
     } finally {
       setDeletingId(null);
     }
@@ -402,22 +816,92 @@ export default function App() {
     }
     setJoiningId(tournament.id);
     try {
-      const res = await fetch(
-        `${BACKEND_URL}/api/tournaments/${tournament.id}/join`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ playerAddress: address }),
+      if (tournament.onChain && window.ethereum) {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const net = await provider.getNetwork();
+        if (net.chainId !== 31337n) {
+          await switchToHardhatNetwork();
         }
-      );
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || `HTTP ${res.status}`);
+
+        setStatus(`MetaMask: Preparing to join tournament #${tournament.id}...`);
+        const signer = await provider.getSigner();
+        const contract = new ethers.Contract(
+          CONTRACT_ADDRESS,
+          CONTRACT_ABI,
+          signer
+        );
+
+        if (tournament.isTokenTournament) {
+          // TRT tournament requires ERC-20 approval
+          const token = new ethers.Contract(
+            REWARD_TOKEN_ADDRESS,
+            REWARD_TOKEN_ABI,
+            signer
+          );
+          const feeWei =
+            tournament.rawEntryFee ||
+            ethers.parseEther(String(parseFloat(tournament.entryFee) || 0));
+
+          // Check TRT token balance; auto-dispense from faucet if balance is low
+          const balance = await token.balanceOf(address);
+          if (balance < feeWei) {
+            setStatus(
+              `Notice: Your TRT balance (${ethers.formatEther(balance)}) is below entry fee (${ethers.formatEther(feeWei)} TRT). Claiming 100 free test TRT from faucet...`
+            );
+            try {
+              const fRes = await fetch(`${BACKEND_URL}/api/faucet`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ address }),
+              });
+              if (fRes.ok) {
+                await fetchChainBalance();
+              }
+            } catch {
+              // Faucet fallback non-blocking
+            }
+          }
+
+          setStatus("MetaMask: Approve TRT entry fee transfer...");
+          const approveTx = await token.approve(CONTRACT_ADDRESS, feeWei);
+          await approveTx.wait();
+
+          setStatus("MetaMask: Join token tournament on-chain...");
+          const tx = await contract.joinTokenTournament(tournament.id);
+          await tx.wait();
+        } else {
+          // Native ETH tournament
+          const feeWei =
+            tournament.rawEntryFee ||
+            ethers.parseEther(String(parseFloat(tournament.entryFee) || 0));
+
+          setStatus("MetaMask: Pay entry fee to join tournament...");
+          const tx = await contract.joinTournament(tournament.id, {
+            value: feeWei,
+          });
+          await tx.wait();
+        }
+        setStatus(`Successfully joined tournament #${tournament.id} on-chain!`);
+      } else {
+        // Fallback for mock backend tournaments
+        const res = await fetch(
+          `${BACKEND_URL}/api/tournaments/${tournament.id}/join`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ playerAddress: address }),
+          }
+        );
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || `HTTP ${res.status}`);
+        }
+        setStatus(`Joined tournament #${tournament.id} successfully`);
       }
-      setStatus(`Joined tournament #${tournament.id} successfully`);
+
       await fetchTournaments();
+      await fetchChainBalance();
     } catch (error) {
-      // Backend returns contract-style revert reasons (already joined, full, not open)
       setStatus(`Join failed: ${getErrorMessage(error)}`);
     } finally {
       setJoiningId(null);
@@ -432,9 +916,10 @@ export default function App() {
             TR
           </span>
           <div>
+            <p className="kicker">Capstone demo · Hardhat 31337</p>
             <h1>TourneyReward</h1>
             <p className="subtitle">
-              Decentralized esports prize distribution
+              Decentralized esports prize distribution & token rewards
             </p>
           </div>
         </div>
@@ -476,8 +961,29 @@ export default function App() {
         </div>
       ) : null}
 
+      {currentChainId && currentChainId !== 31337 ? (
+        <div
+          className="banner"
+          style={{
+            background: "rgba(217, 180, 92, 0.12)",
+            borderColor: "rgba(217, 180, 92, 0.4)",
+            color: "var(--accent)",
+          }}
+          role="alert"
+        >
+          <strong>Notice:</strong> MetaMask is on Chain ID <code>{currentChainId}</code> instead of Hardhat Localhost (<code>31337</code>).{" "}
+          <button
+            className="btn btn-primary"
+            style={{ padding: "4px 12px", marginLeft: "12px", fontSize: "12px" }}
+            onClick={switchToHardhatNetwork}
+          >
+            Switch MetaMask to Hardhat (31337)
+          </button>
+        </div>
+      ) : null}
+
       <section className="card">
-        <h2>Backend</h2>
+        <h2>Backend & Blockchain Node</h2>
         {backendHealth ? (
           <p>
             Status:{" "}
@@ -508,56 +1014,81 @@ export default function App() {
           ) : null}
         </div>
         <p className="muted small">
-          Contract: <code>{CONTRACT_ADDRESS}</code>
+          Tournament Contract: <code>{CONTRACT_ADDRESS}</code>
+          <br />
+          Reward Token (TRT): <code>{REWARD_TOKEN_ADDRESS}</code>
         </p>
       </section>
 
       <section className="card">
         <div className="row row-spread">
-          <h2>Wallet</h2>
+          <h2>Wallet & Balances</h2>
           {address ? (
-            <button
-              className="btn"
-              onClick={() => {
-                fetchBalance(address);
-                fetchChainBalance();
-              }}
-              disabled={balanceLoading}
-            >
-              {balanceLoading ? "Loading..." : "Refresh balance"}
-            </button>
+            <div className="row">
+              <button
+                className="btn"
+                onClick={claimFaucet}
+                disabled={faucetLoading}
+                title="Dispense 100 test TRT tokens and gas ETH"
+              >
+                {faucetLoading ? "Dispensing..." : "Claim 100 Test TRT (Faucet)"}
+              </button>
+              <button
+                className="btn"
+                onClick={() => {
+                  fetchBalance(address);
+                  fetchChainBalance();
+                }}
+                disabled={balanceLoading}
+              >
+                {balanceLoading ? "Loading..." : "Refresh balance"}
+              </button>
+            </div>
           ) : null}
         </div>
         {!address ? (
-          <p className="muted">Connect wallet to see balances.</p>
+          <p className="muted">Connect wallet to see balances and player status.</p>
         ) : backendBalance?.error ? (
           <p className="bad">Balance error: {backendBalance.error}</p>
         ) : (
-          <div className="stats">
-            <div className="stat">
-              <span className="stat-label">Backend</span>
-              <strong>{backendBalance?.formattedBalance || "..."}</strong>
-              <span className="muted small">
-                {backendBalance?.network || "Hardhat Local"}
-              </span>
+          <>
+            <div className="stats">
+              <div className="stat">
+                <span className="stat-label">Chain ETH</span>
+                <strong>{chainBalance !== null ? chainBalance : "..."}</strong>
+                <span className="muted small">live on-chain balance</span>
+              </div>
+              <div className="stat">
+                <span className="stat-label">Reward Token (TRT)</span>
+                <strong>{trtBalance !== null ? `${trtBalance} TRT` : "..."}</strong>
+                <span className="muted small">ERC-20 tournament token</span>
+              </div>
+              <div className="stat">
+                <span className="stat-label">On-Chain Player</span>
+                <strong>{isGloballyRegistered ? "Registered" : "Not Registered"}</strong>
+                <span className="muted small">
+                  {isGloballyRegistered ? (
+                    <span className="ok">Verified on-chain</span>
+                  ) : (
+                    <button
+                      className="btn btn-primary"
+                      style={{ fontSize: "11px", padding: "3px 8px", marginTop: "4px" }}
+                      onClick={registerGlobalPlayer}
+                      disabled={registeringPlayer}
+                    >
+                      {registeringPlayer ? "Registering..." : "Register Now"}
+                    </button>
+                  )}
+                </span>
+              </div>
             </div>
-            <div className="stat">
-              <span className="stat-label">Chain ETH</span>
-              <strong>{chainBalance !== null ? chainBalance : "..."}</strong>
-              <span className="muted small">live on-chain balance</span>
-            </div>
-            <div className="stat">
-              <span className="stat-label">TRT</span>
-              <strong>{trtBalance !== null ? trtBalance : "..."}</strong>
-              <span className="muted small">reward-token balance</span>
-            </div>
-          </div>
+          </>
         )}
       </section>
 
       <section className="card">
         <div className="row row-spread">
-          <h2>Rewards</h2>
+          <h2>Rewards & My Tournaments</h2>
           {address ? (
             <button className="btn" onClick={() => fetchNotifications(address)}>
               Refresh rewards
@@ -581,13 +1112,25 @@ export default function App() {
                       <div className="tournament-title">
                         #{tournament.id} {tournament.title}{" "}
                         {statusBadge(tournament.status)}
+                        {tournament.isTokenTournament ? (
+                          <span className="badge st-progress">TRT Token</span>
+                        ) : (
+                          <span className="badge st-open">ETH Escrow</span>
+                        )}
+                        {tournament.onChain ? (
+                          <span className="badge st-done">On-Chain</span>
+                        ) : null}
                       </div>
                       <div className="prize-line">
                         Prize <strong>{tournament.prizePool}</strong>
                         {tournament.prizeDistributed ? (
                           <span className="muted small"> · Distributed</span>
                         ) : null}
-                        {tournament.winner ? ` · Winner ${tournament.winner.slice(0, 6)}...` : ""}
+                        {tournament.winner ? (
+                          ` · Winner ${tournament.winner.slice(0, 6)}...`
+                        ) : (
+                          ""
+                        )}
                       </div>
                     </div>
                     <button
@@ -599,15 +1142,15 @@ export default function App() {
                       title={
                         tournament.prizeDistributed
                           ? "Prize already distributed"
-                          : "Claim prize via backend API"
+                          : "Claim / Distribute prize"
                       }
                       onClick={() => claimPrize(tournament)}
                     >
                       {claimingId === tournament.id
                         ? "Claiming..."
                         : tournament.prizeDistributed
-                          ? "Claimed"
-                          : "Claim prize"}
+                        ? "Claimed"
+                        : "Claim prize"}
                     </button>
                   </li>
                 ))}
@@ -655,13 +1198,15 @@ export default function App() {
           <p className="muted">
             Listening for TournamentCreated, TokenTournamentCreated,
             PlayerRegistered, PrizeDistributed, TokenPrizeDistributed,
-            TournamentCancelled — new events appear here and
-            auto-refresh the lists.
+            TournamentCancelled — new events appear here in real time.
           </p>
         ) : (
           <ul className="tournament-list">
             {liveEvents.map((event, index) => (
-              <li key={`${event.time}-${index}`} className="tournament-item event-item">
+              <li
+                key={`${event.time}-${index}`}
+                className="tournament-item event-item"
+              >
                 <div className="tournament-main event-main">
                   {eventDot(event.type)}
                   <div>
@@ -678,11 +1223,10 @@ export default function App() {
 
       <section className="card">
         <div className="row row-spread">
-          <h2>Admin</h2>
+          <h2>Admin & Tournament Management</h2>
         </div>
         <p className="muted small">
-          Admin actions manage the backend tournament store. On-chain
-          cancellation is separate and keeps escrowed funds locked.
+          Create tournaments on-chain directly via MetaMask or manage backend mirrors.
         </p>
         {!address ? (
           <p className="muted">Connect wallet to manage tournaments.</p>
@@ -690,62 +1234,104 @@ export default function App() {
           <>
             <h3 className="subheading">Create tournament</h3>
             <form className="form-grid" onSubmit={createTournament}>
-            <label className="field field-wide">
-              <span>Title</span>
-              <input
-                type="text"
-                placeholder="Campus Cup"
-                value={newTournament.title}
-                onChange={(e) =>
-                  setNewTournament({ ...newTournament, title: e.target.value })
-                }
-              />
-            </label>
-            <label className="field">
-              <span>Prize pool (ETH)</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={newTournament.prizePool}
-                onChange={(e) =>
-                  setNewTournament({ ...newTournament, prizePool: e.target.value })
-                }
-              />
-            </label>
-            <label className="field">
-              <span>Entry fee (ETH)</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={newTournament.entryFee}
-                onChange={(e) =>
-                  setNewTournament({ ...newTournament, entryFee: e.target.value })
-                }
-              />
-            </label>
-            <label className="field">
-              <span>Max players</span>
-              <input
-                type="number"
-                min="2"
-                value={newTournament.maxPlayers}
-                onChange={(e) =>
-                  setNewTournament({ ...newTournament, maxPlayers: e.target.value })
-                }
-              />
-            </label>
-            <div className="field field-wide">
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={creating}
-              >
-                {creating ? "Creating..." : "Create tournament"}
-              </button>
-            </div>
-          </form>
+              <label className="field field-wide">
+                <span>Title</span>
+                <input
+                  type="text"
+                  placeholder="Apex Legends Invitational"
+                  value={newTournament.title}
+                  onChange={(e) =>
+                    setNewTournament({
+                      ...newTournament,
+                      title: e.target.value,
+                    })
+                  }
+                />
+              </label>
+
+              <label className="field">
+                <span>Prize Currency</span>
+                <select
+                  value={newTournament.currency}
+                  onChange={(e) =>
+                    setNewTournament({
+                      ...newTournament,
+                      currency: e.target.value,
+                    })
+                  }
+                  style={{
+                    background: "var(--field)",
+                    border: "1px solid var(--field-border)",
+                    color: "var(--text)",
+                    padding: "8px",
+                    borderRadius: "6px",
+                  }}
+                >
+                  <option value="ETH">ETH (Native Cryptocurency)</option>
+                  <option value="TRT">TRT (Reward Token ERC-20)</option>
+                </select>
+              </label>
+
+              <label className="field">
+                <span>Prize pool ({newTournament.currency})</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={newTournament.prizePool}
+                  onChange={(e) =>
+                    setNewTournament({
+                      ...newTournament,
+                      prizePool: e.target.value,
+                    })
+                  }
+                />
+              </label>
+
+              <label className="field">
+                <span>Entry fee ({newTournament.currency})</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={newTournament.entryFee}
+                  onChange={(e) =>
+                    setNewTournament({
+                      ...newTournament,
+                      entryFee: e.target.value,
+                    })
+                  }
+                />
+              </label>
+
+              <label className="field">
+                <span>Max players</span>
+                <input
+                  type="number"
+                  min="2"
+                  value={newTournament.maxPlayers}
+                  onChange={(e) =>
+                    setNewTournament({
+                      ...newTournament,
+                      maxPlayers: e.target.value,
+                    })
+                  }
+                />
+              </label>
+
+              <div className="field field-wide">
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={creating}
+                >
+                  {creating
+                    ? "Deploying on-chain..."
+                    : `Create ${newTournament.currency} Tournament (MetaMask)`}
+                </button>
+              </div>
+            </form>
+
             <h3 className="subheading">
-              All tournaments ({tournaments.length})
+              Manage tournaments ({tournaments.length})
             </h3>
             {tournaments.length === 0 ? (
               <p className="muted">No tournaments to manage.</p>
@@ -757,6 +1343,14 @@ export default function App() {
                       <div className="tournament-title">
                         #{tournament.id} {tournament.title}{" "}
                         {statusBadge(tournament.status)}
+                        {tournament.isTokenTournament ? (
+                          <span className="badge st-progress">TRT</span>
+                        ) : (
+                          <span className="badge st-open">ETH</span>
+                        )}
+                        {tournament.onChain ? (
+                          <span className="badge st-done">On-Chain</span>
+                        ) : null}
                       </div>
                       <div className="muted small">
                         {tournament.currentPlayers}/{tournament.maxPlayers}{" "}
@@ -788,7 +1382,7 @@ export default function App() {
 
       <section className="card">
         <div className="row row-spread">
-          <h2>Tournaments</h2>
+          <h2>Available Tournaments</h2>
           <button
             className="btn"
             onClick={fetchTournaments}
@@ -798,7 +1392,7 @@ export default function App() {
           </button>
         </div>
         {tournaments.length === 0 && !tournamentsLoading ? (
-          <p className="muted">No tournaments found. Start the backend.</p>
+          <p className="muted">No tournaments found. Create one above.</p>
         ) : null}
         <ul className="tournament-list">
           {tournaments.map((tournament) => {
@@ -811,16 +1405,30 @@ export default function App() {
                     )
                   )
                 : 0;
+            const alreadyJoined =
+              address &&
+              (tournament.players || []).some(
+                (p) => p.toLowerCase() === address.toLowerCase()
+              );
+
             return (
               <li key={tournament.id} className="tournament-item">
                 <div className="tournament-main">
                   <div className="tournament-title">
                     #{tournament.id} {tournament.title}{" "}
                     {statusBadge(tournament.status)}
+                    {tournament.isTokenTournament ? (
+                      <span className="badge st-progress">TRT Token</span>
+                    ) : (
+                      <span className="badge st-open">ETH Escrow</span>
+                    )}
+                    {tournament.onChain ? (
+                      <span className="badge st-done">On-Chain</span>
+                    ) : null}
                   </div>
                   <div className="prize-line">
                     Prize <strong>{tournament.prizePool}</strong>
-                    <span className="muted"> · Fee {tournament.entryFee}</span>
+                    <span className="muted"> · Entry Fee {tournament.entryFee}</span>
                   </div>
                   <div className="progress" aria-hidden="true">
                     <div
@@ -830,15 +1438,36 @@ export default function App() {
                   </div>
                   <div className="muted small">
                     {tournament.currentPlayers}/{tournament.maxPlayers} players
+                    registered
+                    {alreadyJoined ? (
+                      <strong className="ok"> · You joined</strong>
+                    ) : null}
                   </div>
                 </div>
                 <button
                   className="btn btn-primary"
-                  disabled={joiningId === tournament.id || !address}
-                  title={!address ? "Connect wallet first" : "Join via backend API"}
+                  disabled={
+                    joiningId === tournament.id ||
+                    !address ||
+                    alreadyJoined ||
+                    tournament.status !== "Open"
+                  }
+                  title={
+                    !address
+                      ? "Connect wallet first"
+                      : alreadyJoined
+                      ? "Already joined this tournament"
+                      : "Join tournament on-chain"
+                  }
                   onClick={() => joinTournament(tournament)}
                 >
-                  {joiningId === tournament.id ? "Joining..." : "Join"}
+                  {joiningId === tournament.id
+                    ? "Joining..."
+                    : alreadyJoined
+                    ? "Joined"
+                    : tournament.status !== "Open"
+                    ? tournament.status
+                    : "Join tournament"}
                 </button>
               </li>
             );
@@ -850,6 +1479,11 @@ export default function App() {
         <h2>Status</h2>
         <p>{status}</p>
       </section>
+
+      <footer className="foot">
+        Settlement in ETH or TRT · every step emitted as a contract event ·
+        backend is an indexing mirror, the smart contract is the source of truth.
+      </footer>
     </div>
   );
 }

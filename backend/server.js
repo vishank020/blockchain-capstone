@@ -7,7 +7,36 @@ import helmet from "helmet";
 import morgan from "morgan";
 import crypto from "crypto";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
+import { ethers } from "ethers";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+function getDeploymentInfo() {
+  const depPath = path.resolve(__dirname, "../deployments/hardhat-local_deployment.json");
+  if (fs.existsSync(depPath)) {
+    try {
+      return JSON.parse(fs.readFileSync(depPath, "utf8"));
+    } catch {}
+  }
+  return {};
+}
+
+function getContractAddress() {
+  const dep = getDeploymentInfo();
+  return process.env.CONTRACT_ADDRESS || dep.contractAddress || "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9";
+}
+
+function getRewardTokenAddress() {
+  const dep = getDeploymentInfo();
+  return (
+    process.env.REWARD_TOKEN_ADDRESS ||
+    (dep.rewardToken && dep.rewardToken.contractAddress) ||
+    "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
+  );
+}
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -261,22 +290,61 @@ app.post("/api/tournaments", (req, res) => {
   }
 });
 
-// Delete Tournament Route (admin; backend mock store only — on-chain
-// cancellation is separate via cancelTournament and keeps funds escrowed)
-app.delete("/api/tournaments/:id", (req, res) => {
+// Delete / Cancel Tournament Route (admin; handles both in-memory and on-chain tournaments)
+app.delete("/api/tournaments/:id", async (req, res) => {
   const tournamentId = parseInt(req.params.id, 10);
   const index = inMemoryStore.tournaments.findIndex((t) => t.id === tournamentId);
-  if (index === -1) {
-    return res.status(404).json({ error: "Tournament not found" });
-  }
-  const tournament = inMemoryStore.tournaments[index];
-  if (tournament.prizeDistributed) {
+
+  // If in-memory tournament has prizeDistributed, reject per audit rule
+  if (index !== -1 && inMemoryStore.tournaments[index].prizeDistributed) {
     return res.status(400).json({
       error: "Prize already distributed — record kept for audit and cannot be deleted",
     });
   }
-  const [removed] = inMemoryStore.tournaments.splice(index, 1);
-  res.json({ success: true, tournament: removed });
+
+  // Attempt on-chain cancellation if Hardhat node is running
+  const rpcUrl = process.env.LOCAL_RPC_URL || "http://127.0.0.1:8545";
+  const contractAddr = getContractAddress();
+  const deployerKey = process.env.ORACLE_PRIVATE_KEY || "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+
+  let onChainCancelled = false;
+  try {
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    const adminSigner = new ethers.Wallet(deployerKey, provider);
+    const tourAbi = [
+      "function cancelTournament(uint256) external",
+      "function getTournament(uint256) view returns (uint256, string, string, uint256, uint256, uint256, uint256, uint8, address, bool)"
+    ];
+    const contract = new ethers.Contract(contractAddr, tourAbi, adminSigner);
+    const t = await contract.getTournament(tournamentId);
+    if (t && Number(t[0]) === tournamentId) {
+      if (t[9]) {
+        return res.status(400).json({
+          error: "Prize already distributed — record kept for audit and cannot be deleted",
+        });
+      }
+      const tx = await contract.cancelTournament(tournamentId);
+      await tx.wait();
+      onChainCancelled = true;
+    }
+  } catch {
+    // On-chain check non-blocking if not on chain
+  }
+
+  if (index !== -1) {
+    const [removed] = inMemoryStore.tournaments.splice(index, 1);
+    return res.json({ success: true, tournament: removed, onChainCancelled });
+  }
+
+  if (onChainCancelled) {
+    return res.json({
+      success: true,
+      tournament: { id: tournamentId, status: "Cancelled" },
+      onChainCancelled: true,
+    });
+  }
+
+  return res.status(404).json({ error: "Tournament not found" });
 });
 
 // Player Registration
@@ -331,7 +399,7 @@ app.post("/api/oracle/verify-match", (req, res) => {
 });
 
 // Prize Distribution Route
-app.post("/api/tournaments/:id/distribute-prize", (req, res) => {
+app.post("/api/tournaments/:id/distribute-prize", async (req, res) => {
   const tournamentId = parseInt(req.params.id, 10);
   const tournament = inMemoryStore.tournaments.find((t) => t.id === tournamentId);
   const { winnerAddress } = req.body;
@@ -346,6 +414,39 @@ app.post("/api/tournaments/:id/distribute-prize", (req, res) => {
     return res.status(400).json({ error: "Winner must be a registered participant" });
   }
 
+  // Attempt on-chain payout relay using Oracle private key if available
+  const rpcUrl = process.env.LOCAL_RPC_URL || "http://127.0.0.1:8545";
+  const contractAddr = getContractAddress();
+  const deployerKey = process.env.ORACLE_PRIVATE_KEY || "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+
+  let onChainTxHash = null;
+  try {
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    const oracleSigner = new ethers.Wallet(deployerKey, provider);
+    const tourAbi = [
+      "function distributePrize(uint256, address payable) external",
+      "function distributeTokenPrize(uint256, address) external",
+      "function isTokenTournament(uint256) view returns (bool)",
+      "function isPlayerRegistered(uint256, address) view returns (bool)"
+    ];
+    const contract = new ethers.Contract(contractAddr, tourAbi, oracleSigner);
+
+    const isReg = await contract.isPlayerRegistered(tournamentId, winnerAddress);
+    if (isReg) {
+      const isToken = await contract.isTokenTournament(tournamentId);
+      let tx;
+      if (isToken) {
+        tx = await contract.distributeTokenPrize(tournamentId, winnerAddress);
+      } else {
+        tx = await contract.distributePrize(tournamentId, winnerAddress);
+      }
+      await tx.wait();
+      onChainTxHash = tx.hash;
+    }
+  } catch (err) {
+    console.warn("On-chain payout relay skipped:", err.message);
+  }
+
   tournament.winner = winnerAddress;
   tournament.status = "Completed";
   tournament.prizeDistributed = true;
@@ -358,6 +459,7 @@ app.post("/api/tournaments/:id/distribute-prize", (req, res) => {
     message: "Prize successfully distributed to winner",
     tournament,
     notification,
+    onChainTxHash,
   });
 });
 
@@ -387,14 +489,65 @@ app.get("/api/token", (req, res) => {
     name: "Tournament Reward Token",
     symbol: "TRT",
     decimals: 18,
-    address:
-      process.env.REWARD_TOKEN_ADDRESS ||
-      "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+    address: getRewardTokenAddress(),
     network: "Hardhat Local (ChainId: 31337)",
     initialSupply: "1000000 TRT",
     usage:
       "Approve TRT to TournamentContract, then createTokenTournament / joinTokenTournament / distributeTokenPrize",
   });
+});
+
+// Test Faucet: Dispenses 100 TRT tokens and test ETH to any requested address
+app.post("/api/faucet", async (req, res) => {
+  const { address } = req.body;
+  if (!address || !ethers.isAddress(address)) {
+    return res.status(400).json({ error: "Valid Ethereum address is required" });
+  }
+
+  const rpcUrl = process.env.LOCAL_RPC_URL || "http://127.0.0.1:8545";
+  const trtAddress = getRewardTokenAddress();
+  const deployerKey = process.env.ORACLE_PRIVATE_KEY || "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+
+  try {
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    const deployer = new ethers.Wallet(deployerKey, provider);
+    const trtAbi = [
+      "function transfer(address to, uint256 amount) returns (bool)",
+      "function balanceOf(address) view returns (uint256)"
+    ];
+    const trt = new ethers.Contract(trtAddress, trtAbi, deployer);
+
+    // Send 100 TRT tokens
+    const amountTrt = ethers.parseEther("100");
+    const trtTx = await trt.transfer(address, amountTrt);
+    await trtTx.wait();
+
+    // Check if player needs ETH for gas
+    const playerBalance = await provider.getBalance(address);
+    let ethSent = "0.0";
+    if (playerBalance < ethers.parseEther("1.0")) {
+      const ethTx = await deployer.sendTransaction({
+        to: address,
+        value: ethers.parseEther("2.0")
+      });
+      await ethTx.wait();
+      ethSent = "2.0";
+    }
+
+    res.json({
+      success: true,
+      message: "Faucet successfully sent 100 TRT tokens and test ETH",
+      recipient: address,
+      trtAmount: "100.0 TRT",
+      ethAmount: `${ethSent} ETH`,
+      txHash: trtTx.hash
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: "Faucet request failed",
+      details: error.message
+    });
+  }
 });
 
 // Start Server if directly invoked
